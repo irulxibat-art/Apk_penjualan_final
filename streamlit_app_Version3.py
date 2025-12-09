@@ -184,6 +184,20 @@ def get_today_sales_total_by_user(user_id):
     c.execute(query, (user_id, today))
     return c.fetchone()[0]
 
+def get_today_summary():
+    today = datetime.datetime.utcnow().date().isoformat()
+
+    query = """
+        SELECT 
+            COALESCE(SUM(total), 0) as total_sales,
+            COALESCE(SUM(profit), 0) as total_profit
+        FROM sales
+        WHERE date(sold_at) = ?
+    """
+
+    c = conn.cursor()
+    c.execute(query, (today,))
+    return c.fetchone()   
 
 # ========== SESSION ==========
 if "user" not in st.session_state:
@@ -320,7 +334,21 @@ else:
 
     elif menu == "Histori Penjualan":
         st.header("Histori Penjualan")
-        st.dataframe(get_sales(role))
+
+    if role == "boss":
+        total_sales, total_profit = get_today_summary()
+
+        col1, col2 = st.columns(2)
+        col1.metric("Total Penjualan Hari Ini", f"Rp {int(total_sales):,}")
+        col2.metric("P&L Hari Ini", f"Rp {int(total_profit):,}")
+
+        st.markdown("---")
+
+    df = get_sales(role)
+    if df.empty:
+        st.info("Belum ada transaksi")
+    else:
+        st.dataframe(df)
 
     elif menu == "Manajemen User":
         st.header("Manajemen User")
