@@ -348,9 +348,7 @@ else:
     if df.empty:
         st.info("Belum ada transaksi")
     else:
-        st.dataframe(df)
-
-    
+        st.dataframe(df)    
     elif menu == "Manajemen User":
         st.header("Manajemen User")
 
