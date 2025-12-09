@@ -31,6 +31,7 @@ def init_db():
         cost REAL,
         price REAL,
         stock INTEGER,
+        warehouse_stock INTEGER,
         created_at TEXT
     )""")
 
@@ -50,6 +51,13 @@ def init_db():
     return conn
 
 conn = init_db()
+
+# Tambah kolom gudang jika belum ada
+try:
+    conn.execute("ALTER TABLE products ADD COLUMN warehouse_stock INTEGER DEFAULT 0")
+    conn.commit()
+except:
+    pass
 
 # ================= AUTH =================
 def hash_password(password):
@@ -91,34 +99,58 @@ def delete_user(user_id, current_user_id):
     return True, "User berhasil dihapus"
 
 # ================= PRODUCT =================
-def add_product(sku, name, cost, price, stock):
+def add_product(sku, name, cost, price, stock, warehouse_stock):
     c = conn.cursor()
     now = datetime.datetime.utcnow().isoformat()
-    c.execute("INSERT INTO products (sku, name, cost, price, stock, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-              (sku, name, cost, price, stock, now))
+    c.execute("""
+        INSERT INTO products (sku, name, cost, price, stock, warehouse_stock, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (sku, name, cost, price, stock, warehouse_stock, now))
     conn.commit()
 
-def update_product(product_id, sku, name, cost, price, stock):
+def update_product(product_id, sku, name, cost, price, stock, warehouse_stock):
     c = conn.cursor()
     c.execute("""
         UPDATE products
-        SET sku=?, name=?, cost=?, price=?, stock=?
+        SET sku=?, name=?, cost=?, price=?, stock=?, warehouse_stock=?
         WHERE id=?
-    """, (sku, name, cost, price, stock, product_id))
+    """, (sku, name, cost, price, stock, warehouse_stock, product_id))
     conn.commit()
 
-def delete_produck(product_id):
+def delete_product(product_id):
     c = conn.cursor()
 
     c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?", (product_id,))
     used = c.fetchone()[0]
 
     if used > 0:
-        return False, "produk sudah pernah transaksi di penjualan, tidak bisa di hapus"
+        return False, "Produk sudah pernah dipakai di penjualan, tidak bisa dihapus"
 
     c.execute("DELETE FROM products WHERE id=?", (product_id,))
     conn.commit()
-    return True, "produk berhasil dihapus"
+    return True, "Produk berhasil dihapus"
+
+def move_stock_from_warehouse(product_id, qty):
+    c = conn.cursor()
+    c.execute("SELECT warehouse_stock FROM products WHERE id=?", (product_id,))
+    row = c.fetchone()
+
+    if not row:
+        return False, "Produk tidak ditemukan"
+
+    gudang = row[0]
+    if qty > gudang:
+        return False, "Stok gudang tidak cukup"
+
+    c.execute("""
+        UPDATE products
+        SET 
+            warehouse_stock = warehouse_stock - ?,
+            stock = stock + ?
+        WHERE id=?
+    """, (qty, qty, product_id))
+    conn.commit()
+    return True, "Stok berhasil dipindahkan dari gudang"
 
 def get_products():
     return pd.read_sql_query("SELECT * FROM products ORDER BY name", conn)
@@ -128,6 +160,7 @@ def record_sale(product_id, qty, sold_by):
     c = conn.cursor()
     c.execute("SELECT stock, cost, price FROM products WHERE id=?", (product_id,))
     row = c.fetchone()
+
     if not row:
         return False, "Produk tidak ditemukan"
 
@@ -218,10 +251,11 @@ else:
             name = st.text_input("Nama Produk")
             cost = st.number_input("Harga Modal", min_value=0.0)
             price = st.number_input("Harga Jual", min_value=0.0)
-            stock = st.number_input("Stok", min_value=0, step=1)
+            stock = st.number_input("Stok Harian", min_value=0, step=1)
+            warehouse_stock = st.number_input("Stok Gudang", min_value=0, step=1)
 
             if st.form_submit_button("Tambah Produk"):
-                add_product(sku, name, cost, price, stock)
+                add_product(sku, name, cost, price, stock, warehouse_stock)
                 st.success("Produk berhasil ditambahkan")
                 st.rerun()
 
@@ -246,26 +280,45 @@ else:
                 name = st.text_input("Nama Produk", value=row["name"])
                 cost = st.number_input("Harga Modal", min_value=0.0, value=float(row["cost"]))
                 price = st.number_input("Harga Jual", min_value=0.0, value=float(row["price"]))
-                stock = st.number_input("Stok", min_value=0, step=1, value=int(row["stock"]))
+                stock = st.number_input("Stok Harian", min_value=0, step=1, value=int(row["stock"]))
+                warehouse_stock = st.number_input("Stok Gudang", min_value=0, step=1, value=int(row["warehouse_stock"]))
 
                 if st.form_submit_button("Update Produk"):
-                    update_product(pilih_id, sku, name, cost, price, stock)
+                    update_product(pilih_id, sku, name, cost, price, stock, warehouse_stock)
                     st.success("Produk berhasil diupdate")
                     st.rerun()
 
         st.markdown("---")
+        st.subheader("Ambil Stok dari Gudang")
+
+        if not df.empty:
+            move_map = df.set_index("id")["name"].to_dict()
+            move_id = st.selectbox(
+                "Pilih produk",
+                options=list(move_map.keys()),
+                format_func=lambda x: f"{x} - {move_map[x]}",
+                key="move_stock"
+            )
+            qty_move = st.number_input("Jumlah ambil dari gudang", min_value=1, step=1)
+
+            if st.button("Pindahkan Stok"):
+                ok, msg = move_stock_from_warehouse(move_id, qty_move)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+        st.markdown("---")
         st.subheader("Hapus Produk")
 
-        df = get_products()
-        if df.empty:
-            st.info("Belum ada produk")
-        else:
+        if not df.empty:
             del_map = df.set_index("id")["name"].to_dict()
             del_id = st.selectbox(
                 "Pilih produk untuk dihapus",
-                 options=list(del_map.keys()),
-                 format_func=lambda x: f"{x} - {del_map[x]}",
-                 key="hapus_produk"
+                options=list(del_map.keys()),
+                format_func=lambda x: f"{x} - {del_map[x]}",
+                key="hapus_produk"
             )
 
             if st.button("Hapus Produk"):
@@ -317,14 +370,12 @@ else:
                     total_penjualan=("total", "sum"),
                     total_profit=("profit", "sum")
                 ).reset_index()
-
                 st.markdown("### P&L Harian (Boss)")
                 st.dataframe(daily)
             else:
                 daily = df.groupby("tanggal").agg(
                     total_penjualan=("total", "sum")
                 ).reset_index()
-
                 st.markdown("### Total Penjualan Harian")
                 st.dataframe(daily)
 
