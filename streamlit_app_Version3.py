@@ -16,7 +16,6 @@ def init_db():
     conn = get_conn()
     c = conn.cursor()
 
-    # USERS
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,7 +25,6 @@ def init_db():
         created_at TEXT
     )""")
 
-    # PRODUCTS
     c.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,7 +37,6 @@ def init_db():
         created_at TEXT
     )""")
 
-    # SALES
     c.execute("""
     CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +69,7 @@ def create_default_user():
             ("boss", hash_password("boss123"), "boss", now)
         )
         conn.commit()
+
 create_default_user()
 
 def login_user(u, p):
@@ -155,7 +153,7 @@ def move_stock_from_warehouse(product_id, qty):
         WHERE id=?
     """, (qty, qty, product_id))
     conn.commit()
-    return True, "Stok dipindahkan ke stok jual"
+    return True, "Stok dipindahkan ke stok harian"
 
 def get_products():
     return pd.read_sql_query("SELECT * FROM products ORDER BY name", conn)
@@ -249,62 +247,66 @@ else:
     if menu == "Home":
         st.header("Dashboard")
 
-    # ================= STOK GUDANG =================
+    # ============ STOK GUDANG =============
     elif menu == "Stok Gudang":
-        st.header("Manajemen Stok Gudang")
+        st.header("Stok Gudang - Tambah Produk & Stok")
 
-        df = get_products()
-        if df.empty:
-            st.info("Belum ada produk")
-        else:
-            st.dataframe(df[["sku", "name", "warehouse_stock"]])
-
-            prod_map = df.set_index("id")["name"].to_dict()
-            pid = st.selectbox("Pilih Produk", prod_map.keys(), format_func=lambda x: prod_map[x])
-            qty = st.number_input("Tambah stok dari supplier", min_value=1, step=1)
-
-            if st.button("Tambah Stok Gudang"):
-                add_warehouse_stock(pid, qty)
-                st.success("Stok gudang ditambahkan")
-                st.rerun()
-
-    # ================= PRODUK & STOK =================
-    elif menu == "Produk & Stok":
-        st.header("Produk & Stok Harian")
-
-        st.subheader("Tambah Produk Baru")
+        st.subheader("Tambah Produk Baru ke Gudang")
         with st.form("add_product"):
             sku = st.text_input("SKU")
             name = st.text_input("Nama Produk")
             cost = st.number_input("Harga Modal", min_value=0.0)
             price = st.number_input("Harga Jual", min_value=0.0)
-            if st.form_submit_button("Simpan Produk"):
+            if st.form_submit_button("Tambah Produk"):
                 add_product(sku, name, cost, price)
-                st.success("Produk berhasil ditambahkan")
+                st.success("Produk berhasil ditambahkan ke gudang")
                 st.rerun()
 
         df = get_products()
         if not df.empty:
             st.markdown("---")
-            st.subheader("Edit Produk")
+            st.subheader("Tambah Stok Gudang")
+
+            prod_map = df.set_index("id")["name"].to_dict()
+            pid = st.selectbox("Pilih Produk", prod_map.keys(), format_func=lambda x: prod_map[x])
+            qty = st.number_input("Jumlah Tambah Stok Gudang", min_value=1, step=1)
+
+            if st.button("Tambah ke Gudang"):
+                add_warehouse_stock(pid, qty)
+                st.success("Stok gudang ditambahkan")
+                st.rerun()
+
+            st.markdown("---")
+            st.subheader("Data Stok Gudang")
+            st.dataframe(df[["sku", "name", "warehouse_stock"]])
+
+    # ============ PRODUK & STOK ============
+    elif menu == "Produk & Stok":
+        st.header("Produk & Stok Harian (Ambil dari Gudang)")
+
+        df = get_products()
+        if df.empty:
+            st.info("Belum ada produk di gudang")
+        else:
             prod_map = df.set_index("id")["name"].to_dict()
             pid = st.selectbox("Pilih Produk", prod_map.keys(), format_func=lambda x: prod_map[x])
 
             row = df[df["id"] == pid].iloc[0]
 
+            st.subheader("Edit Produk")
             with st.form("edit_form"):
                 sku = st.text_input("SKU", value=row["sku"])
-                name = st.text_input("Nama", value=row["name"])
+                name = st.text_input("Nama Produk", value=row["name"])
                 cost = st.number_input("Harga Modal", min_value=0.0, value=float(row["cost"]))
                 price = st.number_input("Harga Jual", min_value=0.0, value=float(row["price"]))
-                if st.form_submit_button("Update"):
+                if st.form_submit_button("Update Produk"):
                     update_product(pid, sku, name, cost, price)
-                    st.success("Produk diupdate")
+                    st.success("Produk diperbarui")
                     st.rerun()
 
             st.markdown("---")
-            st.subheader("Ambil Stok dari Gudang ke Etalase")
-            qty = st.number_input("Jumlah ambil ke stok harian", min_value=1, step=1)
+            st.subheader("Ambil Stok Harian dari Gudang")
+            qty = st.number_input("Jumlah diambil ke stok harian", min_value=1, step=1)
             if st.button("Ambil Stok"):
                 ok, msg = move_stock_from_warehouse(pid, qty)
                 if ok:
@@ -324,12 +326,12 @@ else:
                     st.error(msg)
 
             st.markdown("---")
-            st.subheader("Daftar Produk")
+            st.subheader("Data Produk & Stok Harian")
             st.dataframe(df[["sku", "name", "stock", "warehouse_stock"]])
 
-    # ================= PENJUALAN =================
+    # ============ PENJUALAN ============
     elif menu == "Penjualan":
-        st.header("Input Penjualan")
+        st.header("Penjualan Harian")
 
         df = get_products()
         if df.empty:
@@ -337,9 +339,9 @@ else:
         else:
             mapping = {f"{r['name']} (stok:{r['stock']})": r['id'] for _, r in df.iterrows()}
             pilih = st.selectbox("Pilih Produk", mapping.keys())
-            qty = st.number_input("Qty jual", min_value=1, step=1)
+            qty = st.number_input("Qty", min_value=1, step=1)
 
-            if st.button("Simpan"):
+            if st.button("Simpan Penjualan"):
                 pid = mapping[pilih]
                 ok, msg = record_sale(pid, qty, user["id"])
                 if ok:
@@ -348,17 +350,16 @@ else:
                 else:
                     st.error(msg)
 
-    # ================= HISTORI =================
+    # ============ HISTORI ============
     elif menu == "Histori Penjualan":
         st.header("Histori Penjualan")
-
         df = get_sales(role)
         if df.empty:
             st.info("Belum ada transaksi")
         else:
             st.dataframe(df)
 
-    # ================= MANAJEMEN USER =================
+    # ============ MANAJEMEN USER ============
     elif menu == "Manajemen User":
         st.header("Manajemen User")
 
