@@ -335,19 +335,18 @@ else:
     elif menu == "Histori Penjualan":
         st.header("Histori Penjualan")
 
-    if role == "boss":
-        total_sales, total_profit = get_today_summary()
+        if role == "boss":
+            total_sales, total_profit = get_today_summary()
+            col1, col2 = st.columns(2)
+            col1.metric("Total Penjualan Hari Ini", f"Rp {int(total_sales):,}")
+            col2.metric("P&L Hari Ini", f"Rp {int(total_profit):,}")
+            st.markdown("---")
 
-        col1, col2 = st.columns(2)
-        col1.metric("Total Penjualan Hari Ini", f"Rp {int(total_sales):,}")
-        col2.metric("P&L Hari Ini", f"Rp {int(total_profit):,}")
-        st.markdown("---")
-
-    df = get_sales(role)
-    if df.empty:
-        st.info("Belum ada transaksi")
-    else:
-        st.dataframe(df)
+        df = get_sales(role)
+        if df.empty:
+            st.info("Belum ada transaksi")
+        else:
+            st.dataframe(df)
     
     elif menu == "Manajemen User":
         st.header("Manajemen User")
