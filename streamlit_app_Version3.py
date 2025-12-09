@@ -107,6 +107,19 @@ def update_product(product_id, sku, name, cost, price, stock):
     """, (sku, name, cost, price, stock, product_id))
     conn.commit()
 
+def delete_produck(product_id):
+    c = conn.cursor()
+
+    c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?", (product_id,))
+    used = c.fetchone()[0]
+
+    if used > 0:
+        return False, "produk sudah pernah transaksi di penjualan, tidak bisa di hapus"
+
+    c.execute("DELETE FROM products WHERE id=?", (product_id,))
+    conn.commit()
+    return True, "produk berhasil dihapus"
+
 def get_products():
     return pd.read_sql_query("SELECT * FROM products ORDER BY name", conn)
 
@@ -239,6 +252,29 @@ else:
                     update_product(pilih_id, sku, name, cost, price, stock)
                     st.success("Produk berhasil diupdate")
                     st.rerun()
+
+        st.markdown("---")
+        st.subheader("Hapus Produk")
+
+        df = get_products()
+        if df.empty:
+            st.info("Belum ada produk")
+        else:
+            del_map = df.set_index("id")["name"].to_dict()
+            del_id = st.selectbox(
+                "Pilih produk untuk dihapus",
+                 options=list(del_map.keys()),
+                 format_func=lambda x: f"{x} - {del_map[x]}",
+                 key="hapus_produk"
+            )
+
+            if st.button("Hapus Produk"):
+                ok, msg = delete_product(del_id)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
 
         st.markdown("---")
         st.subheader("Daftar Produk")
