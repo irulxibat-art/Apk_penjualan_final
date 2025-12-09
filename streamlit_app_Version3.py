@@ -207,9 +207,10 @@ else:
     role = user["role"]
 
     st.sidebar.write(f"Login: {user['username']} ({role})")
+
     if role == "karyawan":
-    today_total = get_today_sales_total_by_user(user["id"])
-    st.sidebar.metric("Total Penjualan Hari Ini", f"Rp {int(today_total):,}")
+        today_total = get_today_sales_total_by_user(user["id"])
+        st.sidebar.metric("Total Penjualan Hari Ini", f"Rp {int(today_total):,}")
     
     if st.sidebar.button("Logout"):
         st.session_state.user = None
