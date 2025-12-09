@@ -170,6 +170,21 @@ def get_sales(role):
                FROM sales s JOIN products p ON s.product_id = p.id"""
     return pd.read_sql_query(q, conn)
 
+def get_today_sales_total_by_user(user_id):
+    today = datetime.datetime.utcnow().date().isoformat()
+
+    query = """
+        SELECT COALESCE(SUM(total), 0)
+        FROM sales
+        WHERE sold_by = ?
+        AND date(sold_at) = ?
+    """
+
+    c = conn.cursor()
+    c.execute(query, (user_id, today))
+    return c.fetchone()[0]
+
+
 # ========== SESSION ==========
 if "user" not in st.session_state:
     st.session_state.user = None
@@ -192,7 +207,10 @@ else:
     role = user["role"]
 
     st.sidebar.write(f"Login: {user['username']} ({role})")
-
+    if role == "karyawan":
+    today_total = get_today_sales_total_by_user(user["id"])
+    st.sidebar.metric("Total Penjualan Hari Ini", f"Rp {int(today_total):,}")
+    
     if st.sidebar.button("Logout"):
         st.session_state.user = None
         st.rerun()
