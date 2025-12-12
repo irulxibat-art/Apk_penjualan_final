@@ -15,6 +15,7 @@ def init_db():
     conn = get_conn()
     c = conn.cursor()
 
+    # USERS
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,6 +25,7 @@ def init_db():
         created_at TEXT
     )""")
 
+    # PRODUCTS
     c.execute("""
     CREATE TABLE IF NOT EXISTS products (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,6 +38,7 @@ def init_db():
         created_at TEXT
     )""")
 
+    # SALES
     c.execute("""
     CREATE TABLE IF NOT EXISTS sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,12 +52,37 @@ def init_db():
         sold_at TEXT
     )""")
 
+    # STORE STATUS (NEW)
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS store_status (
+        id INTEGER PRIMARY KEY,
+        status TEXT
+    )""")
+
+    # Insert default status if empty
+    c.execute("SELECT COUNT(*) FROM store_status")
+    if c.fetchone()[0] == 0:
+        c.execute("INSERT INTO store_status (id, status) VALUES (1, 'open')")
+
     conn.commit()
     return conn
 
 conn = init_db()
 
-# ========== AUTH ==========
+
+# ========= STORE STATUS =========
+def get_store_status():
+    c = conn.cursor()
+    c.execute("SELECT status FROM store_status WHERE id=1")
+    return c.fetchone()[0]
+
+def set_store_status(status):
+    c = conn.cursor()
+    c.execute("UPDATE store_status SET status=? WHERE id=1", (status,))
+    conn.commit()
+
+
+# ========= AUTH ==========
 def hash_password(p):
     return hashlib.sha256(p.encode()).hexdigest()
 
@@ -74,25 +102,8 @@ def login_user(u, p):
               (u, hash_password(p)))
     return c.fetchone()
 
-def create_user(username, password, role):
-    try:
-        c = conn.cursor()
-        c.execute("INSERT INTO users VALUES (NULL,?,?,?,?)",
-                  (username, hash_password(password), role, datetime.datetime.utcnow().isoformat()))
-        conn.commit()
-        return True, "User berhasil dibuat"
-    except sqlite3.IntegrityError:
-        return False, "Username sudah dipakai"
 
-def delete_user(user_id, current_user_id):
-    if user_id == current_user_id:
-        return False, "Tidak bisa hapus diri sendiri"
-    c = conn.cursor()
-    c.execute("DELETE FROM users WHERE id=?", (user_id,))
-    conn.commit()
-    return True, "User berhasil dihapus"
-
-# ========== PRODUCT ==========
+# ========= PRODUCT FUNCTIONS ==========
 def add_product(sku, name, cost, price):
     c = conn.cursor()
     c.execute("""
@@ -144,7 +155,8 @@ def move_stock_from_warehouse(product_id, qty):
 def get_products():
     return pd.read_sql_query("SELECT * FROM products ORDER BY name", conn)
 
-# ========== SALES ==========
+
+# ========= SALES ==========
 def record_sale(product_id, qty, sold_by):
     c = conn.cursor()
     c.execute("SELECT stock, cost, price FROM products WHERE id=?", (product_id,))
@@ -172,21 +184,18 @@ def get_sales(role):
 
 def get_today_sales_total_by_user(user_id):
     today = datetime.datetime.utcnow().date().isoformat()
-
     query = """
         SELECT COALESCE(SUM(total), 0)
         FROM sales
         WHERE sold_by = ?
         AND date(sold_at) = ?
     """
-
     c = conn.cursor()
     c.execute(query, (user_id, today))
     return c.fetchone()[0]
 
 def get_today_summary():
     today = datetime.datetime.utcnow().date().isoformat()
-
     query = """
         SELECT 
             COALESCE(SUM(total), 0) as total_sales,
@@ -194,25 +203,34 @@ def get_today_summary():
         FROM sales
         WHERE date(sold_at) = ?
     """
-
     c = conn.cursor()
     c.execute(query, (today,))
-    return c.fetchone()   
+    return c.fetchone()
 
-# ========== SESSION ==========
+
+# ========= SESSION ==========
 if "user" not in st.session_state:
     st.session_state.user = None
 
-# ========== UI ==========
+
+# ========= UI ==========
 if st.session_state.user is None:
     st.title("Login")
+
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
+
     if st.button("Login"):
         user = login_user(u, p)
         if user:
-            st.session_state.user = {"id": user[0], "username": user[1], "role": user[3]}
-            st.rerun()
+            # Check store status for karyawan
+            store_status = get_store_status()
+
+            if user[3] == "karyawan" and store_status == "closed":
+                st.error("Toko sedang tutup. Karyawan tidak bisa login.")
+            else:
+                st.session_state.user = {"id": user[0], "username": user[1], "role": user[3]}
+                st.rerun()
         else:
             st.error("Login gagal")
 
@@ -225,11 +243,12 @@ else:
     if role == "karyawan":
         today_total = get_today_sales_total_by_user(user["id"])
         st.sidebar.metric("Total Penjualan Hari Ini", f"Rp {int(today_total):,}")
-    
+
     if st.sidebar.button("Logout"):
         st.session_state.user = None
         st.rerun()
 
+    # MENU
     if role == "boss":
         menu = st.sidebar.selectbox(
             "Menu",
@@ -238,10 +257,27 @@ else:
     else:
         menu = st.sidebar.selectbox("Menu", ["Home", "Penjualan", "Histori Penjualan"])
 
+    # ========= HOME (WITH STORE OPEN/CLOSE) ==========
     if menu == "Home":
         st.header("Dashboard")
 
-    # ========== STOK GUDANG ==========
+        store_status = get_store_status()
+        st.subheader(f"Status Toko: {store_status.upper()}")
+
+        if role == "boss":
+            col1, col2 = st.columns(2)
+            if col1.button("Toko Buka"):
+                set_store_status("open")
+                st.success("Toko dibuka")
+                st.rerun()
+
+            if col2.button("Toko Tutup"):
+                set_store_status("closed")
+                st.warning("Toko ditutup")
+                st.rerun()
+
+
+    # ========= STOK GUDANG ==========
     elif menu == "Stok Gudang":
         st.header("Manajemen Stok Gudang")
 
@@ -293,7 +329,7 @@ else:
             st.subheader("Daftar Produk")
             st.dataframe(df[["sku", "name", "warehouse_stock"]])
 
-    # ========== PRODUK & STOK ==========
+    # ========= PRODUK & STOK ==========
     elif menu == "Produk & Stok":
         st.header("Ambil Stok Harian dari Gudang")
 
@@ -315,6 +351,7 @@ else:
             st.subheader("Stok Harian")
             st.dataframe(df[["sku", "name", "stock"]])
 
+    # ========= PENJUALAN ==========
     elif menu == "Penjualan":
         st.header("Penjualan")
 
@@ -332,6 +369,7 @@ else:
                 else:
                     st.error(msg)
 
+    # ========= HISTORI PENJUALAN ==========
     elif menu == "Histori Penjualan":
         st.header("Histori Penjualan")
 
@@ -347,7 +385,8 @@ else:
             st.info("Belum ada transaksi")
         else:
             st.dataframe(df)
-    
+
+    # ========= USER MANAGEMENT ==========
     elif menu == "Manajemen User":
         st.header("Manajemen User")
 
@@ -356,12 +395,15 @@ else:
             password = st.text_input("Password", type="password")
             r = st.selectbox("Role", ["boss", "karyawan"])
             if st.form_submit_button("Tambah User"):
-                ok, msg = create_user(username, password, r)
-                if ok:
-                    st.success(msg)
+                try:
+                    c = conn.cursor()
+                    c.execute("INSERT INTO users VALUES (NULL,?,?,?,?)",
+                              (username, hash_password(password), r, datetime.datetime.utcnow().isoformat()))
+                    conn.commit()
+                    st.success("User berhasil dibuat")
                     st.rerun()
-                else:
-                    st.error(msg)
+                except sqlite3.IntegrityError:
+                    st.error("Username sudah dipakai")
 
         user_df = pd.read_sql_query("SELECT id, username, role FROM users", conn)
         st.dataframe(user_df)
@@ -370,9 +412,11 @@ else:
             user_map = user_df.set_index("id")["username"].to_dict()
             uid = st.selectbox("Pilih User", user_map.keys(), format_func=lambda x: user_map[x])
             if st.button("Hapus User"):
-                ok, msg = delete_user(uid, user["id"])
-                if ok:
-                    st.success(msg)
-                    st.rerun()
+                if uid == user["id"]:
+                    st.error("Tidak bisa hapus diri sendiri")
                 else:
-                    st.error(msg)
+                    c = conn.cursor()
+                    c.execute("DELETE FROM users WHERE id=?", (uid,))
+                    conn.commit()
+                    st.success("User dihapus")
+                    st.rerun()
