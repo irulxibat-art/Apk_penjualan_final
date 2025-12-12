@@ -7,78 +7,86 @@ import datetime
 st.set_page_config(page_title="Inventory System", layout="wide")
 
 # =============================
-# CUSTOM UI (BLUE - PURPLE GRADIENT)
+# CUSTOM UI – CYBER NEON (Font Hitam)
 # =============================
 page_bg_css = """
 <style>
-/* Background gradasi */
+/* Background Cyber Neon */
 .stApp {
-    background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%) !important;
+    background: linear-gradient(135deg, #06b6d4 0%, #0ea5e9 30%, #2563eb 70%, #1e40af 100%) !important;
     background-attachment: fixed;
 }
 
-/* Card */
+/* Card style */
 div[data-testid="stColumn"] > div {
-    background: rgba(255, 255, 255, 0.20);
+    background: rgba(255, 255, 255, 0.38);
     padding: 20px;
-    border-radius: 15px;
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0px 4px 20px rgba(0,0,0,0.1);
+    border-radius: 14px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.30);
+    color: black !important;
 }
 
-/* Header text */
+/* Headers */
 h1, h2, h3, h4 {
-    color: white !important;
-    font-weight: 700;
+    color: black !important;
+    font-weight: 800;
 }
 
 /* Sidebar */
 section[data-testid="stSidebar"] {
-    background: rgba(30, 30, 60, 0.65) !important;
-    backdrop-filter: blur(10px);
+    background: rgba(255,255,255,0.25) !important;
+    backdrop-filter: blur(16px);
 }
 section[data-testid="stSidebar"] * {
-    color: white !important;
+    color: black !important;
 }
 
 /* Inputs */
 input, select, textarea, .stNumberInput input {
     border-radius: 10px !important;
+    color: black !important;
 }
 
 /* Buttons */
 .stButton button {
-    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-    color: white;
-    border-radius: 10px;
+    background: linear-gradient(90deg, #0ea5e9, #14b8a6);
+    color: white !important;
+    border-radius: 12px;
     padding: 8px 20px;
     font-weight: 600;
     border: none;
 }
 .stButton button:hover {
+    transform: scale(1.03);
     opacity: 0.92;
-    transform: scale(1.02);
 }
 
 /* Metrics */
 [data-testid="stMetricValue"], 
 [data-testid="stMetricDelta"], 
 [data-testid="stMetricLabel"] {
-    color: white !important;
+    color: black !important;
 }
 
-/* Tables */
+/* Table */
 .dataframe {
     background: white !important;
+    color: black !important;
     border-radius: 10px;
 }
 
 /* Forms */
 form {
-    background: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.35);
     padding: 20px;
     border-radius: 12px;
+    color: black !important;
+}
+
+/* All text black */
+p, label, span, div {
+    color: black !important;
 }
 </style>
 """
@@ -153,7 +161,6 @@ conn = init_db()
 # =============================
 # STORE STATUS
 # =============================
-
 def get_store_status():
     c = conn.cursor()
     c.execute("SELECT status FROM store_status WHERE id=1")
@@ -167,7 +174,6 @@ def set_store_status(status):
 # =============================
 # AUTH
 # =============================
-
 def hash_password(p):
     return hashlib.sha256(p.encode()).hexdigest()
 
@@ -189,7 +195,6 @@ def login_user(u, p):
 # =============================
 # PRODUCT OPERATIONS
 # =============================
-
 def add_product(sku, name, cost, price):
     c = conn.cursor()
     c.execute("""
@@ -200,32 +205,36 @@ def add_product(sku, name, cost, price):
 
 def update_product(product_id, sku, name, cost, price):
     c = conn.cursor()
-    c.execute("""
-        UPDATE products SET sku=?, name=?, cost=?, price=? WHERE id=?
-    """, (sku, name, cost, price, product_id))
+    c.execute("UPDATE products SET sku=?, name=?, cost=?, price=? WHERE id=?",
+              (sku, name, cost, price, product_id))
     conn.commit()
 
 def delete_product(product_id):
     c = conn.cursor()
     c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?", (product_id,))
     used = c.fetchone()[0]
+
     if used > 0:
-        return False, "Produk sudah dipakai dalam transaksi"
+        return False, "Produk sudah dipakai transaksi"
+
     c.execute("DELETE FROM products WHERE id=?", (product_id,))
     conn.commit()
-    return True, "Produk berhasil dihapus"
+    return True, "Produk dihapus"
 
 def add_warehouse_stock(product_id, qty):
     c = conn.cursor()
-    c.execute("UPDATE products SET warehouse_stock = warehouse_stock + ? WHERE id=?", (qty, product_id))
+    c.execute("UPDATE products SET warehouse_stock = warehouse_stock + ? WHERE id=?",
+              (qty, product_id))
     conn.commit()
 
 def move_stock_from_warehouse(product_id, qty):
     c = conn.cursor()
     c.execute("SELECT warehouse_stock FROM products WHERE id=?", (product_id,))
     row = c.fetchone()
+
     if qty > row[0]:
         return False, "Stok gudang tidak cukup"
+
     c.execute("""
         UPDATE products
         SET warehouse_stock = warehouse_stock - ?, stock = stock + ?
@@ -240,7 +249,6 @@ def get_products():
 # =============================
 # SALES
 # =============================
-
 def record_sale(product_id, qty, sold_by):
     c = conn.cursor()
     c.execute("SELECT stock, cost, price FROM products WHERE id=?", (product_id,))
@@ -273,9 +281,11 @@ def get_sales(role):
 
 def get_today_sales_total_by_user(user_id):
     today = datetime.datetime.utcnow().date().isoformat()
+
     q = """
         SELECT COALESCE(SUM(total), 0)
-        FROM sales WHERE sold_by = ? AND date(sold_at) = ?
+        FROM sales
+        WHERE sold_by = ? AND date(sold_at) = ?
     """
     c = conn.cursor()
     c.execute(q, (user_id, today))
@@ -285,7 +295,8 @@ def get_today_summary():
     today = datetime.datetime.utcnow().date().isoformat()
     q = """
         SELECT COALESCE(SUM(total), 0), COALESCE(SUM(profit), 0)
-        FROM sales WHERE date(sold_at)=?
+        FROM sales
+        WHERE date(sold_at)=?
     """
     c = conn.cursor()
     c.execute(q, (today,))
@@ -301,13 +312,14 @@ if "user" not in st.session_state:
 # LOGIN SCREEN
 # =============================
 if st.session_state.user is None:
-    st.title("Login")
+    st.title("Login Sistem")
 
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
 
     if st.button("Login"):
         user = login_user(u, p)
+
         if user:
             store_status = get_store_status()
 
@@ -316,6 +328,7 @@ if st.session_state.user is None:
             else:
                 st.session_state.user = {"id": user[0], "username": user[1], "role": user[3]}
                 st.rerun()
+
         else:
             st.error("Login gagal")
 
@@ -329,8 +342,8 @@ else:
     st.sidebar.write(f"Login: {user['username']} ({role})")
 
     if role == "karyawan":
-        today_total = get_today_sales_total_by_user(user["id"])
-        st.sidebar.metric("Total Hari Ini", f"Rp {int(today_total):,}")
+        total_today = get_today_sales_total_by_user(user["id"])
+        st.sidebar.metric("Total Hari Ini", f"Rp {int(total_today):,}")
 
     if st.sidebar.button("Logout"):
         st.session_state.user = None
@@ -338,27 +351,27 @@ else:
 
     # MENU
     if role == "boss":
-        menu = st.sidebar.selectbox(
-            "Menu",
+        menu = st.sidebar.selectbox("Menu", 
             ["Home", "Stok Gudang", "Produk & Stok", "Penjualan", "Histori Penjualan", "Manajemen User"]
         )
     else:
         menu = st.sidebar.selectbox("Menu", ["Home", "Penjualan", "Histori Penjualan"])
 
     # =============================
-    # HOME + STORE OPEN/CLOSE
+    # HOME
     # =============================
     if menu == "Home":
         st.header("Dashboard")
 
-        store_status = get_store_status()
-        st.subheader(f"Status Toko: {store_status.upper()}")
+        status = get_store_status()
+        st.subheader(f"Status Toko: {status.upper()}")
 
         if role == "boss":
             col1, col2 = st.columns(2)
+
             if col1.button("Toko Buka"):
                 set_store_status("open")
-                st.success("Toko dibuka")
+                st.success("Toko berhasil dibuka")
                 st.rerun()
 
             if col2.button("Toko Tutup"):
@@ -372,39 +385,43 @@ else:
     elif menu == "Stok Gudang":
         st.header("Stok Gudang")
 
-        st.subheader("Tambah Produk")
-        with st.form("add_product"):
+        st.subheader("Tambah Produk Baru")
+        with st.form("add_prod"):
             sku = st.text_input("SKU")
             name = st.text_input("Nama Produk")
             cost = st.number_input("Harga Modal", min_value=0.0)
             price = st.number_input("Harga Jual", min_value=0.0)
-            if st.form_submit_button("Simpan Produk"):
+
+            if st.form_submit_button("Tambah Produk"):
                 add_product(sku, name, cost, price)
                 st.success("Produk ditambahkan")
                 st.rerun()
 
         df = get_products()
+
         if not df.empty:
             prod_map = df.set_index("id")["name"].to_dict()
             pid = st.selectbox("Pilih Produk", prod_map.keys(), format_func=lambda x: prod_map[x])
+
             row = df[df["id"] == pid].iloc[0]
 
             st.subheader("Edit Produk")
-            with st.form("edit_product"):
+            with st.form("edit_prod"):
                 sku = st.text_input("SKU", value=row["sku"])
                 name = st.text_input("Nama", value=row["name"])
-                cost = st.number_input("Harga Modal", value=float(row["cost"]))
+                cost = st.number_input("Modal", value=float(row["cost"]))
                 price = st.number_input("Harga Jual", value=float(row["price"]))
-                if st.form_submit_button("Update Produk"):
+
+                if st.form_submit_button("Update"):
                     update_product(pid, sku, name, cost, price)
                     st.success("Produk diperbarui")
                     st.rerun()
 
             st.subheader("Tambah Stok Gudang")
-            qty = st.number_input("Tambah Stok Gudang", min_value=1)
+            qty = st.number_input("Jumlah Tambah", min_value=1)
             if st.button("Tambah Stok"):
                 add_warehouse_stock(pid, qty)
-                st.success("Stok ditambahkan")
+                st.success("Stok Ditambahkan")
                 st.rerun()
 
             st.subheader("Hapus Produk")
@@ -423,7 +440,7 @@ else:
     # PRODUK & STOK
     # =============================
     elif menu == "Produk & Stok":
-        st.header("Ambil Stok Harian")
+        st.header("Pindah Stok ke Stok Harian")
 
         df = get_products()
 
@@ -432,9 +449,10 @@ else:
         else:
             prod_map = df.set_index("id")["name"].to_dict()
             pid = st.selectbox("Produk", prod_map.keys(), format_func=lambda x: prod_map[x])
-            qty = st.number_input("Qty", min_value=1)
 
-            if st.button("Ambil"):
+            qty = st.number_input("Jumlah Ambil", min_value=1)
+
+            if st.button("Ambil ke Stok Harian"):
                 ok, msg = move_stock_from_warehouse(pid, qty)
                 if ok:
                     st.success(msg)
@@ -449,14 +467,14 @@ else:
     # PENJUALAN
     # =============================
     elif menu == "Penjualan":
-        st.header("Penjualan")
+        st.header("Penjualan Produk")
 
         df = get_products()
 
         if not df.empty:
             mapping = {f"{r['name']} ({r['stock']})": r['id'] for _, r in df.iterrows()}
             pilih = st.selectbox("Produk", mapping.keys())
-            qty = st.number_input("Qty Jual", min_value=1)
+            qty = st.number_input("Qty", min_value=1)
 
             if st.button("Simpan Penjualan"):
                 pid = mapping[pilih]
@@ -472,7 +490,7 @@ else:
     # HISTORI PENJUALAN
     # =============================
     elif menu == "Histori Penjualan":
-        st.header("Histori Penjualan")
+        st.header("Riwayat Penjualan")
 
         if role == "boss":
             total_sales, total_profit = get_today_summary()
@@ -500,27 +518,28 @@ else:
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             r = st.selectbox("Role", ["boss", "karyawan"])
+
             if st.form_submit_button("Tambah User"):
                 try:
                     c = conn.cursor()
                     c.execute("INSERT INTO users VALUES (NULL,?,?,?,?)",
                               (username, hash_password(password), r, datetime.datetime.utcnow().isoformat()))
                     conn.commit()
-                    st.success("User berhasil dibuat")
+                    st.success("User berhasil ditambahkan")
                     st.rerun()
                 except sqlite3.IntegrityError:
-                    st.error("Username sudah digunakan")
+                    st.error("Username sudah dipakai")
 
         df = pd.read_sql_query("SELECT id, username, role FROM users", conn)
         st.dataframe(df)
 
         if not df.empty:
-            mapping = df.set_index("id")["username"].to_dict()
-            uid = st.selectbox("Pilih User", mapping.keys(), format_func=lambda x: mapping[x])
+            m = df.set_index("id")["username"].to_dict()
+            uid = st.selectbox("Pilih User", m.keys(), format_func=lambda x: m[x])
 
             if st.button("Hapus User"):
                 if uid == user["id"]:
-                    st.error("Tidak bisa hapus diri sendiri")
+                    st.error("Tidak bisa hapus akun sendiri")
                 else:
                     c = conn.cursor()
                     c.execute("DELETE FROM users WHERE id=?", (uid,))
