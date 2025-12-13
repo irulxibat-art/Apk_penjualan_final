@@ -4,9 +4,10 @@ import pandas as pd
 import hashlib
 import datetime
 
+# ================= CONFIG =================
 st.set_page_config(page_title="Inventory System", layout="wide")
 
-# ================= UI RINGAN =================
+# ================= UI =================
 st.markdown("""
 <style>
 .stApp {
@@ -39,20 +40,20 @@ h1,h2,h3,h4,p,label,span { color:black; font-weight:700; }
 
 # ================= DATABASE =================
 DB = "inventory.db"
-def get_conn():
+def conn():
     return sqlite3.connect(DB, check_same_thread=False)
 
-conn = get_conn()
-c = conn.cursor()
+db = conn()
+c = db.cursor()
 
-c.execute("""CREATE TABLE IF NOT EXISTS users (
+c.execute("""CREATE TABLE IF NOT EXISTS users(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 username TEXT UNIQUE,
 password TEXT,
 role TEXT,
 created_at TEXT)""")
 
-c.execute("""CREATE TABLE IF NOT EXISTS products (
+c.execute("""CREATE TABLE IF NOT EXISTS products(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 sku TEXT,
 name TEXT,
@@ -62,7 +63,7 @@ stock INTEGER DEFAULT 0,
 warehouse_stock INTEGER DEFAULT 0,
 created_at TEXT)""")
 
-c.execute("""CREATE TABLE IF NOT EXISTS sales (
+c.execute("""CREATE TABLE IF NOT EXISTS sales(
 id INTEGER PRIMARY KEY AUTOINCREMENT,
 product_id INTEGER,
 qty INTEGER,
@@ -73,7 +74,7 @@ profit REAL,
 sold_by INTEGER,
 sold_at TEXT)""")
 
-c.execute("""CREATE TABLE IF NOT EXISTS store_status (
+c.execute("""CREATE TABLE IF NOT EXISTS store_status(
 id INTEGER PRIMARY KEY,
 status TEXT)""")
 
@@ -81,22 +82,21 @@ c.execute("SELECT COUNT(*) FROM store_status")
 if c.fetchone()[0] == 0:
     c.execute("INSERT INTO store_status VALUES (1,'open')")
 
-conn.commit()
+db.commit()
 
 # ================= AUTH =================
-def hash_pw(p): 
-    return hashlib.sha256(p.encode()).hexdigest()
+def hash_pw(p): return hashlib.sha256(p.encode()).hexdigest()
 
 c.execute("SELECT * FROM users WHERE username='boss'")
 if not c.fetchone():
-    c.execute("INSERT INTO users VALUES (NULL,?,?,?,?)",
-              ("boss", hash_pw("boss123"), "boss",
+    c.execute("INSERT INTO users VALUES(NULL,?,?,?,?)",
+              ("boss",hash_pw("boss123"),"boss",
                datetime.datetime.utcnow().isoformat()))
-    conn.commit()
+    db.commit()
 
-def login(u, p):
+def login(u,p):
     c.execute("SELECT * FROM users WHERE username=? AND password=?",
-              (u, hash_pw(p)))
+              (u,hash_pw(p)))
     return c.fetchone()
 
 # ================= STORE =================
@@ -105,74 +105,76 @@ def store_status():
     return c.fetchone()[0]
 
 def set_store(s):
-    c.execute("UPDATE store_status SET status=? WHERE id=1", (s,))
-    conn.commit()
+    c.execute("UPDATE store_status SET status=? WHERE id=1",(s,))
+    db.commit()
 
 # ================= PRODUCT =================
-def get_products():
-    return pd.read_sql("SELECT * FROM products ORDER BY name", conn)
+def products():
+    return pd.read_sql("SELECT * FROM products ORDER BY name", db)
 
-def add_product(sku, name, cost, price):
+def add_product(sku,name,cost,price):
     c.execute("""INSERT INTO products
     (sku,name,cost,price,created_at)
-    VALUES (?,?,?,?,?)""",
+    VALUES(?,?,?,?,?)""",
     (sku,name,cost,price,datetime.datetime.utcnow().isoformat()))
-    conn.commit()
+    db.commit()
 
-def update_product(pid, sku, name, cost, price):
+def update_product(pid,sku,name,cost,price):
     c.execute("""UPDATE products
-    SET sku=?, name=?, cost=?, price=?
+    SET sku=?,name=?,cost=?,price=?
     WHERE id=?""",
     (sku,name,cost,price,pid))
-    conn.commit()
+    db.commit()
 
 def delete_product(pid):
-    c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?", (pid,))
+    c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?",(pid,))
     if c.fetchone()[0] > 0:
-        return False, "Produk sudah pernah terjual"
-    c.execute("DELETE FROM products WHERE id=?", (pid,))
-    conn.commit()
-    return True, "Produk berhasil dihapus"
+        return False,"Produk sudah pernah terjual"
+    c.execute("DELETE FROM products WHERE id=?",(pid,))
+    db.commit()
+    return True,"Produk dihapus"
 
-def add_warehouse_stock(pid, qty):
+def add_warehouse_stock(pid,qty):
     c.execute("UPDATE products SET warehouse_stock=warehouse_stock+? WHERE id=?",
               (qty,pid))
-    conn.commit()
+    db.commit()
 
-def move_stock(pid, qty):
-    c.execute("SELECT warehouse_stock FROM products WHERE id=?", (pid,))
+def move_stock(pid,qty):
+    c.execute("SELECT warehouse_stock FROM products WHERE id=?",(pid,))
     ws = c.fetchone()[0]
     if qty > ws:
-        return False, "Stok gudang tidak cukup"
+        return False,"Stok gudang tidak cukup"
     c.execute("""UPDATE products
-    SET warehouse_stock=warehouse_stock-?, stock=stock+?
-    WHERE id=?""",
-    (qty,qty,pid))
-    conn.commit()
-    return True, "Stok dipindahkan"
+    SET warehouse_stock=warehouse_stock-?,
+        stock=stock+?
+    WHERE id=?""",(qty,qty,pid))
+    db.commit()
+    return True,"Stok dipindahkan"
 
 # ================= SALES =================
-def record_sale(pid, qty, uid):
-    c.execute("SELECT stock,cost,price FROM products WHERE id=?", (pid,))
+def sell(pid,qty,uid):
+    c.execute("SELECT stock,cost,price FROM products WHERE id=?",(pid,))
     stock,cost,price = c.fetchone()
     if qty > stock:
-        return False, "Stok tidak cukup"
+        return False,"Stok tidak cukup"
     total = qty * price
-    profit = (price-cost) * qty
+    profit = (price - cost) * qty
     c.execute("""INSERT INTO sales
     (product_id,qty,cost_each,price_each,total,profit,sold_by,sold_at)
-    VALUES (?,?,?,?,?,?,?,?)""",
+    VALUES(?,?,?,?,?,?,?,?)""",
     (pid,qty,cost,price,total,profit,uid,
      datetime.datetime.utcnow().isoformat()))
-    c.execute("UPDATE products SET stock=stock-? WHERE id=?", (qty,pid))
-    conn.commit()
-    return True, "Penjualan berhasil"
+    c.execute("UPDATE products SET stock=stock-? WHERE id=?",(qty,pid))
+    db.commit()
+    return True,"Penjualan berhasil"
 
 # ================= SESSION =================
 if "user" not in st.session_state:
     st.session_state.user = None
 if "selected_product" not in st.session_state:
     st.session_state.selected_product = None
+if "show_edit_product" not in st.session_state:
+    st.session_state.show_edit_product = False
 
 # ================= LOGIN =================
 if st.session_state.user is None:
@@ -186,9 +188,9 @@ if st.session_state.user is None:
                 st.error("Toko sedang tutup")
             else:
                 st.session_state.user = {
-                    "id": user[0],
-                    "username": user[1],
-                    "role": user[3]
+                    "id":user[0],
+                    "username":user[1],
+                    "role":user[3]
                 }
                 st.rerun()
         else:
@@ -201,7 +203,7 @@ else:
 
     st.sidebar.write(f"{user['username']} ({role})")
     if st.sidebar.button("Logout"):
-        st.session_state.user=None
+        st.session_state.user = None
         st.rerun()
 
     menu = st.sidebar.selectbox(
@@ -211,69 +213,79 @@ else:
         else ["Home","Penjualan","Histori Penjualan"]
     )
 
-    # ---------- HOME ----------
+    # -------- HOME --------
     if menu=="Home":
         st.header("Dashboard")
         st.subheader(f"Status Toko: {store_status().upper()}")
         if role=="boss":
-            col1,col2 = st.columns(2)
-            if col1.button("Toko Buka"):
+            c1,c2 = st.columns(2)
+            if c1.button("Toko Buka"):
                 set_store("open"); st.rerun()
-            if col2.button("Toko Tutup"):
+            if c2.button("Toko Tutup"):
                 set_store("closed"); st.rerun()
 
-    # ---------- STOK GUDANG ----------
+    # -------- STOK GUDANG --------
     elif menu=="Stok Gudang":
         st.header("Stok Gudang")
 
-        st.subheader("Tambah Produk")
         with st.form("add_prod"):
+            st.subheader("Tambah Produk")
             sku = st.text_input("SKU")
             name = st.text_input("Nama Produk")
-            cost = st.number_input("Harga Modal")
+            cost = st.number_input("Modal")
             price = st.number_input("Harga Jual")
             if st.form_submit_button("Tambah"):
                 add_product(sku,name,cost,price)
                 st.success("Produk ditambahkan")
                 st.rerun()
 
-        df = get_products()
+        df = products()
         if not df.empty:
-            prod_map = df.set_index("id")["name"].to_dict()
-            pid = st.selectbox("Pilih Produk", prod_map.keys(),
-                               format_func=lambda x: prod_map[x])
+            pid = st.selectbox("Pilih Produk", df["id"],
+                               format_func=lambda x: df[df.id==x]["name"].iloc[0])
             row = df[df.id==pid].iloc[0]
 
-            st.subheader("Edit Produk")
-            with st.form("edit_prod"):
-                sku = st.text_input("SKU", value=row["sku"])
-                name = st.text_input("Nama", value=row["name"])
-                cost = st.number_input("Modal", value=float(row["cost"]))
-                price = st.number_input("Harga", value=float(row["price"]))
-                if st.form_submit_button("Update"):
-                    update_product(pid,sku,name,cost,price)
-                    st.success("Produk diperbarui")
-                    st.rerun()
+            if st.button("✏️ Edit Produk"):
+                st.session_state.show_edit_product = not st.session_state.show_edit_product
+
+            if st.session_state.show_edit_product:
+                with st.form("edit_prod"):
+                    st.subheader("Edit Produk")
+                    sku = st.text_input("SKU", value=row["sku"])
+                    name = st.text_input("Nama", value=row["name"])
+                    cost = st.number_input("Modal", value=float(row["cost"]))
+                    price = st.number_input("Harga", value=float(row["price"]))
+                    c1,c2 = st.columns(2)
+                    if c1.form_submit_button("Simpan"):
+                        update_product(pid,sku,name,cost,price)
+                        st.session_state.show_edit_product = False
+                        st.success("Produk diperbarui")
+                        st.rerun()
+                    if c2.form_submit_button("Batal"):
+                        st.session_state.show_edit_product = False
+                        st.rerun()
 
             st.subheader("Tambah Stok Gudang")
-            qty = st.number_input("Jumlah Tambah", min_value=1)
+            qty = st.number_input("Jumlah", min_value=1)
             if st.button("Tambah Stok"):
                 add_warehouse_stock(pid,qty)
-                st.success("Stok ditambahkan")
+                st.success("Stok gudang ditambahkan")
                 st.rerun()
 
             st.subheader("Hapus Produk")
             if st.button("Hapus Produk"):
                 ok,msg = delete_product(pid)
                 st.success(msg) if ok else st.error(msg)
-                if ok: st.rerun()
+                if ok:
+                    st.session_state.show_edit_product = False
+                    st.rerun()
 
             st.dataframe(df[["sku","name","warehouse_stock"]])
 
-    # ---------- PRODUK & STOK ----------
+    # -------- PRODUK & STOK --------
     elif menu=="Produk & Stok":
-        st.header("Ambil Stok Harian dari Gudang")
-        df = get_products()
+        st.header("Ambil Stok Harian")
+        df = products()
         pid = st.selectbox("Produk", df["id"],
                            format_func=lambda x: df[df.id==x]["name"].iloc[0])
         qty = st.number_input("Jumlah Ambil", min_value=1)
@@ -283,10 +295,10 @@ else:
             if ok: st.rerun()
         st.dataframe(df[["sku","name","stock","warehouse_stock"]])
 
-    # ---------- PENJUALAN ----------
+    # -------- PENJUALAN --------
     elif menu=="Penjualan":
         st.header("Penjualan")
-        df = get_products()
+        df = products()
         cols = st.columns(3)
         for i,row in df.iterrows():
             with cols[i%3]:
@@ -298,13 +310,13 @@ else:
             prod = df[df.id==st.session_state.selected_product].iloc[0]
             qty = st.number_input("Qty", min_value=1)
             if st.button("Simpan Penjualan"):
-                ok,msg = record_sale(prod["id"],qty,user["id"])
+                ok,msg = sell(prod["id"],qty,user["id"])
                 st.success(msg) if ok else st.error(msg)
                 if ok:
-                    st.session_state.selected_product=None
+                    st.session_state.selected_product = None
                     st.rerun()
 
-    # ---------- HISTORI ----------
+    # -------- HISTORI --------
     elif menu=="Histori Penjualan":
         st.header("Histori Penjualan")
         if role=="boss":
@@ -312,13 +324,14 @@ else:
             t,p = c.fetchone()
             st.metric("Total Hari Ini", f"Rp {int(t or 0):,}")
             st.metric("P&L Hari Ini", f"Rp {int(p or 0):,}")
-        q = """SELECT s.id,p.name,s.qty,s.total,s.sold_at
-               FROM sales s JOIN products p ON s.product_id=p.id"""
-        if role=="boss":
-            q = q.replace("s.total","s.total,s.profit")
-        st.dataframe(pd.read_sql(q, conn))
+            q = """SELECT p.name,s.qty,s.total,s.profit,s.sold_at
+                   FROM sales s JOIN products p ON s.product_id=p.id"""
+        else:
+            q = """SELECT p.name,s.qty,s.total,s.sold_at
+                   FROM sales s JOIN products p ON s.product_id=p.id"""
+        st.dataframe(pd.read_sql(q, db))
 
-    # ---------- USER ----------
+    # -------- USER --------
     elif menu=="Manajemen User":
         st.header("Manajemen User")
         with st.form("user"):
@@ -327,10 +340,10 @@ else:
             r = st.selectbox("Role", ["boss","karyawan"])
             if st.form_submit_button("Tambah"):
                 try:
-                    c.execute("INSERT INTO users VALUES (NULL,?,?,?,?)",
+                    c.execute("INSERT INTO users VALUES(NULL,?,?,?,?)",
                               (u,hash_pw(p),r,
                                datetime.datetime.utcnow().isoformat()))
-                    conn.commit(); st.rerun()
+                    db.commit(); st.rerun()
                 except:
                     st.error("Username sudah ada")
-        st.dataframe(pd.read_sql("SELECT id,username,role FROM users", conn))
+        st.dataframe(pd.read_sql("SELECT id,username,role FROM users", db))
