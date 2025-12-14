@@ -3,6 +3,9 @@ import sqlite3
 import pandas as pd
 import hashlib
 import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from io import BytesIO
 
 # ================= CONFIG =================
 st.set_page_config(page_title="Inventory System", layout="wide")
@@ -40,10 +43,10 @@ h1,h2,h3,h4,p,label,span { color:black; font-weight:700; }
 
 # ================= DATABASE =================
 DB = "inventory.db"
-def conn():
+def get_db():
     return sqlite3.connect(DB, check_same_thread=False)
 
-db = conn()
+db = get_db()
 c = db.cursor()
 
 c.execute("""CREATE TABLE IF NOT EXISTS users(
@@ -85,12 +88,13 @@ if c.fetchone()[0] == 0:
 db.commit()
 
 # ================= AUTH =================
-def hash_pw(p): return hashlib.sha256(p.encode()).hexdigest()
+def hash_pw(p): 
+    return hashlib.sha256(p.encode()).hexdigest()
 
 c.execute("SELECT * FROM users WHERE username='boss'")
 if not c.fetchone():
     c.execute("INSERT INTO users VALUES(NULL,?,?,?,?)",
-              ("boss",hash_pw("boss123"),"boss",
+              ("boss", hash_pw("boss123"), "boss",
                datetime.datetime.utcnow().isoformat()))
     db.commit()
 
@@ -102,14 +106,15 @@ def login(u,p):
 # ================= STORE =================
 def store_status():
     c.execute("SELECT status FROM store_status WHERE id=1")
-    return c.fetchone()[0]
+    row = c.fetchone()
+    return row[0] if row else "open"
 
 def set_store(s):
     c.execute("UPDATE store_status SET status=? WHERE id=1",(s,))
     db.commit()
 
 # ================= PRODUCT =================
-def products():
+def get_products():
     return pd.read_sql("SELECT * FROM products ORDER BY name", db)
 
 def add_product(sku,name,cost,price):
@@ -122,15 +127,14 @@ def add_product(sku,name,cost,price):
 def update_product(pid,sku,name,cost,price):
     c.execute("""UPDATE products
     SET sku=?,name=?,cost=?,price=?
-    WHERE id=?""",
-    (sku,name,cost,price,pid))
+    WHERE id=?""",(sku,name,cost,price,pid))
     db.commit()
 
 def delete_product(pid):
-    c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?",(pid,))
+    c.execute("SELECT COUNT(*) FROM sales WHERE product_id=?", (pid,))
     if c.fetchone()[0] > 0:
         return False,"Produk sudah pernah terjual"
-    c.execute("DELETE FROM products WHERE id=?",(pid,))
+    c.execute("DELETE FROM products WHERE id=?", (pid,))
     db.commit()
     return True,"Produk dihapus"
 
@@ -140,8 +144,11 @@ def add_warehouse_stock(pid,qty):
     db.commit()
 
 def move_stock(pid,qty):
-    c.execute("SELECT warehouse_stock FROM products WHERE id=?",(pid,))
-    ws = c.fetchone()[0]
+    c.execute("SELECT warehouse_stock FROM products WHERE id=?", (pid,))
+    row = c.fetchone()
+    if row is None:
+        return False,"Produk tidak ditemukan"
+    ws = row[0]
     if qty > ws:
         return False,"Stok gudang tidak cukup"
     c.execute("""UPDATE products
@@ -153,8 +160,11 @@ def move_stock(pid,qty):
 
 # ================= SALES =================
 def sell(pid,qty,uid):
-    c.execute("SELECT stock,cost,price FROM products WHERE id=?",(pid,))
-    stock,cost,price = c.fetchone()
+    c.execute("SELECT stock,cost,price FROM products WHERE id=?", (pid,))
+    row = c.fetchone()
+    if row is None:
+        return False,"Produk tidak ditemukan"
+    stock,cost,price = row
     if qty > stock:
         return False,"Stok tidak cukup"
     total = qty * price
@@ -164,34 +174,60 @@ def sell(pid,qty,uid):
     VALUES(?,?,?,?,?,?,?,?)""",
     (pid,qty,cost,price,total,profit,uid,
      datetime.datetime.utcnow().isoformat()))
-    c.execute("UPDATE products SET stock=stock-? WHERE id=?",(qty,pid))
+    c.execute("UPDATE products SET stock=stock-? WHERE id=?", (qty,pid))
     db.commit()
     return True,"Penjualan berhasil"
 
+# ================= PDF =================
+def generate_sales_pdf(df):
+    buf = BytesIO()
+    pdf = canvas.Canvas(buf, pagesize=A4)
+    w,h = A4
+
+    pdf.setFont("Helvetica-Bold",14)
+    pdf.drawString(40,h-40,"LAPORAN PENJUALAN")
+
+    pdf.setFont("Helvetica",10)
+    y = h-80
+    headers = df.columns.tolist()
+    x = [40,170,250,330,410]
+
+    for i,head in enumerate(headers):
+        pdf.drawString(x[i],y,head)
+
+    y -= 20
+    pdf.setFont("Helvetica",9)
+
+    for _,row in df.iterrows():
+        if y < 60:
+            pdf.showPage()
+            y = h-60
+            pdf.setFont("Helvetica",9)
+        for i,val in enumerate(row):
+            pdf.drawString(x[i],y,str(val))
+        y -= 16
+
+    pdf.save()
+    buf.seek(0)
+    return buf
+
 # ================= SESSION =================
-if "user" not in st.session_state:
-    st.session_state.user = None
-if "selected_product" not in st.session_state:
-    st.session_state.selected_product = None
-if "show_edit_product" not in st.session_state:
-    st.session_state.show_edit_product = False
+if "user" not in st.session_state: st.session_state.user=None
+if "selected_product" not in st.session_state: st.session_state.selected_product=None
+if "show_edit_product" not in st.session_state: st.session_state.show_edit_product=False
 
 # ================= LOGIN =================
 if st.session_state.user is None:
     st.title("Login Sistem")
     u = st.text_input("Username")
-    p = st.text_input("Password", type="password")
+    p = st.text_input("Password",type="password")
     if st.button("Login"):
         user = login(u,p)
         if user:
             if user[3]=="karyawan" and store_status()=="closed":
                 st.error("Toko sedang tutup")
             else:
-                st.session_state.user = {
-                    "id":user[0],
-                    "username":user[1],
-                    "role":user[3]
-                }
+                st.session_state.user={"id":user[0],"username":user[1],"role":user[3]}
                 st.rerun()
         else:
             st.error("Login gagal")
@@ -203,7 +239,7 @@ else:
 
     st.sidebar.write(f"{user['username']} ({role})")
     if st.sidebar.button("Logout"):
-        st.session_state.user = None
+        st.session_state.user=None
         st.rerun()
 
     menu = st.sidebar.selectbox(
@@ -213,131 +249,141 @@ else:
         else ["Home","Penjualan","Histori Penjualan"]
     )
 
-    # -------- HOME --------
+    # HOME
     if menu=="Home":
         st.header("Dashboard")
         st.subheader(f"Status Toko: {store_status().upper()}")
         if role=="boss":
             c1,c2 = st.columns(2)
-            if c1.button("Toko Buka"):
-                set_store("open"); st.rerun()
-            if c2.button("Toko Tutup"):
-                set_store("closed"); st.rerun()
+            if c1.button("Toko Buka"): set_store("open"); st.rerun()
+            if c2.button("Toko Tutup"): set_store("closed"); st.rerun()
 
-    # -------- STOK GUDANG --------
+    # STOK GUDANG
     elif menu=="Stok Gudang":
         st.header("Stok Gudang")
 
-        with st.form("add_prod"):
+        with st.form("add"):
             st.subheader("Tambah Produk")
             sku = st.text_input("SKU")
             name = st.text_input("Nama Produk")
             cost = st.number_input("Modal")
-            price = st.number_input("Harga Jual")
+            price = st.number_input("Harga")
             if st.form_submit_button("Tambah"):
                 add_product(sku,name,cost,price)
-                st.success("Produk ditambahkan")
                 st.rerun()
 
-        df = products()
+        df = get_products()
         if not df.empty:
-            pid = st.selectbox("Pilih Produk", df["id"],
+            pid = st.selectbox("Pilih Produk",df["id"],
                                format_func=lambda x: df[df.id==x]["name"].iloc[0])
             row = df[df.id==pid].iloc[0]
 
-            if st.button("✏️ Edit Produk"):
+            if st.button("Edit Produk"):
                 st.session_state.show_edit_product = not st.session_state.show_edit_product
 
             if st.session_state.show_edit_product:
-                with st.form("edit_prod"):
-                    st.subheader("Edit Produk")
-                    sku = st.text_input("SKU", value=row["sku"])
-                    name = st.text_input("Nama", value=row["name"])
-                    cost = st.number_input("Modal", value=float(row["cost"]))
-                    price = st.number_input("Harga", value=float(row["price"]))
+                with st.form("edit"):
+                    sku = st.text_input("SKU",value=row["sku"])
+                    name = st.text_input("Nama",value=row["name"])
+                    cost = st.number_input("Modal",value=float(row["cost"]))
+                    price = st.number_input("Harga",value=float(row["price"]))
                     c1,c2 = st.columns(2)
                     if c1.form_submit_button("Simpan"):
                         update_product(pid,sku,name,cost,price)
-                        st.session_state.show_edit_product = False
-                        st.success("Produk diperbarui")
+                        st.session_state.show_edit_product=False
                         st.rerun()
                     if c2.form_submit_button("Batal"):
-                        st.session_state.show_edit_product = False
+                        st.session_state.show_edit_product=False
                         st.rerun()
 
             st.subheader("Tambah Stok Gudang")
-            qty = st.number_input("Jumlah", min_value=1)
+            qty = st.number_input("Jumlah",min_value=1)
             if st.button("Tambah Stok"):
                 add_warehouse_stock(pid,qty)
-                st.success("Stok gudang ditambahkan")
                 st.rerun()
 
             st.subheader("Hapus Produk")
             if st.button("Hapus Produk"):
-                ok,msg = delete_product(pid)
-                st.success(msg) if ok else st.error(msg)
-                if ok:
-                    st.session_state.show_edit_product = False
-                    st.rerun()
+                delete_product(pid)
+                st.rerun()
 
             st.dataframe(df[["sku","name","warehouse_stock"]])
 
-    # -------- PRODUK & STOK --------
+    # PRODUK & STOK
     elif menu=="Produk & Stok":
         st.header("Ambil Stok Harian")
-        df = products()
-        pid = st.selectbox("Produk", df["id"],
+        df = get_products()
+        pid = st.selectbox("Produk",df["id"],
                            format_func=lambda x: df[df.id==x]["name"].iloc[0])
-        qty = st.number_input("Jumlah Ambil", min_value=1)
+        qty = st.number_input("Jumlah Ambil",min_value=1)
         if st.button("Ambil Stok"):
-            ok,msg = move_stock(pid,qty)
-            st.success(msg) if ok else st.error(msg)
-            if ok: st.rerun()
+            move_stock(pid,qty)
+            st.rerun()
         st.dataframe(df[["sku","name","stock","warehouse_stock"]])
 
-    # -------- PENJUALAN --------
+    # PENJUALAN
     elif menu=="Penjualan":
         st.header("Penjualan")
-        df = products()
+        df = get_products()
         cols = st.columns(3)
         for i,row in df.iterrows():
             with cols[i%3]:
-                if st.button(f"{row['name']}\nStok: {row['stock']}",
+                if st.button(f"{row['name']}\nStok:{row['stock']}",
                              key=f"p{row['id']}"):
-                    st.session_state.selected_product = row["id"]
+                    st.session_state.selected_product=row["id"]
 
         if st.session_state.selected_product:
             prod = df[df.id==st.session_state.selected_product].iloc[0]
-            qty = st.number_input("Qty", min_value=1)
-            if st.button("Simpan Penjualan"):
-                ok,msg = sell(prod["id"],qty,user["id"])
-                st.success(msg) if ok else st.error(msg)
-                if ok:
-                    st.session_state.selected_product = None
-                    st.rerun()
+            qty = st.number_input("Qty",min_value=1)
+            if st.button("Simpan"):
+                sell(prod["id"],qty,user["id"])
+                st.session_state.selected_product=None
+                st.rerun()
 
-    # -------- HISTORI --------
+    # HISTORI + PDF
     elif menu=="Histori Penjualan":
         st.header("Histori Penjualan")
-        if role=="boss":
-            c.execute("SELECT SUM(total),SUM(profit) FROM sales WHERE date(sold_at)=date('now')")
-            t,p = c.fetchone()
-            st.metric("Total Hari Ini", f"Rp {int(t or 0):,}")
-            st.metric("P&L Hari Ini", f"Rp {int(p or 0):,}")
-            q = """SELECT p.name,s.qty,s.total,s.profit,s.sold_at
-                   FROM sales s JOIN products p ON s.product_id=p.id"""
-        else:
-            q = """SELECT p.name,s.qty,s.total,s.sold_at
-                   FROM sales s JOIN products p ON s.product_id=p.id"""
-        st.dataframe(pd.read_sql(q, db))
 
-    # -------- USER --------
+        if role=="boss":
+            df = pd.read_sql("""
+            SELECT p.name AS Produk,
+                   s.qty AS Qty,
+                   s.total AS Total,
+                   s.profit AS Profit,
+                   date(s.sold_at) AS Tanggal
+            FROM sales s
+            JOIN products p ON s.product_id=p.id
+            ORDER BY s.sold_at DESC
+            """, db)
+
+            st.dataframe(df)
+
+            pdf = generate_sales_pdf(df)
+            st.download_button(
+                "Download Laporan PDF",
+                data=pdf,
+                file_name="laporan_penjualan.pdf",
+                mime="application/pdf"
+            )
+        else:
+            df = pd.read_sql("""
+            SELECT p.name AS Produk,
+                   s.qty AS Qty,
+                   s.total AS Total,
+                   date(s.sold_at) AS Tanggal
+            FROM sales s
+            JOIN products p ON s.product_id=p.id
+            WHERE s.sold_by=?
+            """, db, params=(user["id"],))
+            st.dataframe(df)
+
+    # USER
     elif menu=="Manajemen User":
         st.header("Manajemen User")
         with st.form("user"):
             u = st.text_input("Username")
-            p = st.text_input("Password", type="password")
-            r = st.selectbox("Role", ["boss","karyawan"])
+            p = st.text_input("Password",type="password")
+            r = st.selectbox("Role",["boss","karyawan"])
             if st.form_submit_button("Tambah"):
                 try:
                     c.execute("INSERT INTO users VALUES(NULL,?,?,?,?)",
@@ -346,4 +392,4 @@ else:
                     db.commit(); st.rerun()
                 except:
                     st.error("Username sudah ada")
-        st.dataframe(pd.read_sql("SELECT id,username,role FROM users", db))
+        st.dataframe(pd.read_sql("SELECT id,username,role FROM users",db))
