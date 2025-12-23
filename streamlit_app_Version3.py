@@ -223,6 +223,19 @@ def get_sales(role):
                FROM sales s JOIN products p ON s.product_id=p.id"""
     return pd.read_sql(q, conn)
 
+def get_today_summary():
+    today = datetime.datetime.utcnow().date().isoformat()
+    q = """
+        SELECT 
+            COALESCE(SUM(total),0),
+            COALESCE(SUM(profit),0)
+        FROM sales
+        WHERE date(sold_at)=?
+    """
+    c = conn.cursor()
+    c.execute(q, (today,))
+    return c.fetchone()
+    
 # =============================
 # PDF EXPORT (BOSS ONLY)
 # =============================
@@ -373,20 +386,32 @@ else:
     # PRODUK & STOK
     # =============================
     elif menu == "Produk & Stok":
+        st.header("Stok Harian")
+
         df = get_products()
-        pid = st.selectbox(
-            "Produk",
-            df["id"],
-            format_func=lambda x: df[df.id == x]["name"].values[0]
-        )
-        qty = st.number_input("Qty Ambil", min_value=1)
-        if st.button("Ambil ke Stok Harian"):
-            ok, msg = move_stock(pid, qty)
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
+
+        if df.empty:
+            st.info("Belum ada produk")
+        else:
+            pid = st.selectbox(
+                "Pilih Produk",
+                df["id"],
+                format_func=lambda x: df[df.id == x]["name"].values[0]
+            )
+
+            qty = st.number_input("Jumlah Ambil dari Gudang", min_value=1)
+
+            if st.button("Ambil ke Stok Harian"):
+                ok, msg = move_stock(pid, qty)
+                if ok:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+            st.subheader("📦 Tabel Stok Harian")
+            st.dataframe(df[["sku", "name", "stock"]])
+
 
     # =============================
     # PENJUALAN
