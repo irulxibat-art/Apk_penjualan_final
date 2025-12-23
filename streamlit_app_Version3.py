@@ -212,6 +212,9 @@ def get_today_summary():
 if "user" not in st.session_state:
     st.session_state.user = None
 
+if "edit_product_id" not in st.session_state:
+    st.session_state.edit_product_id = None
+
 
 # ========= UI ==========
 if st.session_state.user is None:
@@ -299,16 +302,37 @@ else:
 
             row = df[df["id"] == pid].iloc[0]
 
-            st.subheader("Edit Produk")
-            with st.form("edit_product"):
-                sku = st.text_input("SKU", value=row["sku"])
-                name = st.text_input("Nama", value=row["name"])
-                cost = st.number_input("Harga Modal", value=float(row["cost"]))
-                price = st.number_input("Harga Jual", value=float(row["price"]))
-                if st.form_submit_button("Update Produk"):
+# =============================
+# EDIT PRODUK (HANYA BOSS & KLIK BUTTON)
+# =============================
+        if role == "boss":
+
+            if st.button("✏️ Edit Produk"):
+                st.session_state.edit_product_id = pid
+
+            if st.session_state.edit_product_id == pid:
+                st.subheader("Edit Produk")
+
+                with st.form("edit_prod"):
+                    sku = st.text_input("SKU", value=row["sku"])
+                    name = st.text_input("Nama Produk", value=row["name"])
+                    cost = st.number_input("Harga Modal", value=float(row["cost"]), min_value=0.0)
+                    price = st.number_input("Harga Jual", value=float(row["price"]), min_value=0.0)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.form_submit_button("💾 Simpan"):
                     update_product(pid, sku, name, cost, price)
                     st.success("Produk berhasil diperbarui")
+                    st.session_state.edit_product_id = None
                     st.rerun()
+
+            with col2:
+                if st.form_submit_button("❌ Batal"):
+                    st.session_state.edit_product_id = None
+                    st.rerun()
+
 
             st.subheader("Tambah Stok Gudang")
             qty = st.number_input("Tambah Stok Gudang", min_value=1)
