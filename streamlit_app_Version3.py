@@ -588,24 +588,6 @@ else:
                 st.subheader("History Harian (Hari Ini)")
                 st.dataframe(df)
 
-            if mode == "History Mingguan":
-                df = pd.read_sql(
-                    """
-                    SELECT
-                        archive_date,
-                        week_number,
-                        total_sales,
-                        total_profit,
-                        pdf_file
-                    FROM sales_archive
-                    ORDER BY archive_date DESC
-                    """,
-                    conn
-                )
-
-                st.subheader("History Mingguan")
-                st.dataframe(df)
-
                 total_df = pd.read_sql(
                     """
                     SELECT
@@ -631,8 +613,24 @@ else:
                     label="Total P&L Hari Ini",
                     value=f"💸Rp {int(total_profit):,}"
                 )
-                
-        
+            
+            if mode == "History Mingguan":
+                df = pd.read_sql(
+                    """
+                    SELECT
+                        archive_date,
+                        week_number,
+                        total_sales,
+                        total_profit,
+                        pdf_file
+                    FROM sales_archive
+                    ORDER BY archive_date DESC
+                    """,
+                    conn
+                )
+
+                st.subheader("History Mingguan")
+                st.dataframe(df)
 
         else:
             df = pd.read_sql(
