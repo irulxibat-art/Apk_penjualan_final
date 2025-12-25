@@ -606,6 +606,34 @@ else:
                 st.subheader("History Mingguan")
                 st.dataframe(df)
 
+                total_df = pd.read_sql(
+                    """
+                    SELECT
+                        SUM(total) AS total_sales,
+                        SUM(profit) AS total_profit
+                    FROM sales
+                    WHERE date(sold_at)=date('now')
+                    """,
+                    conn
+                )
+
+                total_sales = total_df.iloc[0]["total_sales"] or 0
+                total_profit = total_df.iloc[0]["total_profit"] or 0
+
+                col1, col2 = st.columns(2)
+
+                col1.metric(
+                    label="Total Penjualan Hari Ini",
+                    value=f"💸Rp {int(total_sales):,}"
+                )
+
+                col2.metric(
+                    label="Total P&L Hari Ini",
+                    value=f"💸Rp {int(total_profit):,}"
+                )
+                
+        
+
         else:
             df = pd.read_sql(
                 """
@@ -620,6 +648,24 @@ else:
             st.subheader("History Harian (Hari Ini)")
             st.dataframe(df)
 
+            total_df = pd.read_sql(
+                """
+                SELECT
+                    SUM(total) AS total_sales
+                FROM sales
+                WHERE date(sold_at)=date('now')
+                """,
+                conn
+            )
+
+            total_sales = total_df.iloc[0]["total_sales"] or 0   
+
+            st.metric(
+                label="Total Penjualan Hari Ini",
+                value=f"💸Rp {int(total_sales):,}"
+            )
+            
+    
     # =============================
     # USER MANAGEMENT
     # =============================
