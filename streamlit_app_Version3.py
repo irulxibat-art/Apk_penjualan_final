@@ -245,16 +245,36 @@ def export_sales_pdf(df):
     styles = getSampleStyleSheet()
     elements = []
 
-    elements.append(Paragraph("Laporan Penjualan", styles["Title"]))
+    # Judul
+    elements.append(Paragraph("LAPORAN PENJUALAN", styles["Title"]))
     elements.append(Paragraph(
         f"Tanggal Cetak: {datetime.datetime.now().strftime('%d-%m-%Y %H:%M')}",
         styles["Normal"]
     ))
+    elements.append(Paragraph("<br/>", styles["Normal"]))
 
+    # Tabel histori
     table_data = [df.columns.tolist()] + df.values.tolist()
-    elements.append(Table(table_data))
-    doc.build(elements)
+    table = Table(table_data, repeatRows=1)
+    elements.append(table)
 
+    # =============================
+    # TOTAL & P&L
+    # =============================
+    total_penjualan = df["total"].sum()
+    total_profit = df["profit"].sum() if "profit" in df.columns else 0
+
+    elements.append(Paragraph("<br/>", styles["Normal"]))
+    elements.append(Paragraph(
+        f"<b>Total Penjualan:</b> Rp {int(total_penjualan):,}",
+        styles["Normal"]
+    ))
+    elements.append(Paragraph(
+        f"<b>Total P&L:</b> Rp {int(total_profit):,}",
+        styles["Normal"]
+    ))
+
+    doc.build(elements)
     return filename
 
 # =============================
