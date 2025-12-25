@@ -438,12 +438,24 @@ else:
     # =============================
     elif menu == "Penjualan":
         df = get_products()
-        pid = st.selectbox(
-            "Produk",
-            df["id"],
-            format_func=lambda x: df[df.id == x]["name"].values[0]
-        )
-        qty = st.number_input("Qty", min_value=1)
+        mapping = {
+            f"{r['name']} (Sisa: {r['stock']})": r['id']
+            for _, r in df.iterrows()
+            }
+
+        pilih = st.selectbox("Pilih Produk", mapping.keys())
+        pid = mapping[pilih]
+        sisa = int(df[df["id"] == pid]["stock"].values[0])
+        if sisa == 0:
+            st.warning("Stok produk ini HABIS")
+
+        qty = st.number_input(
+            "Qty",
+            min_value=1,
+            max_value=max(1, sisa),
+            disabled=(sisa == 0)
+            )
+
         if st.button("Simpan Penjualan"):
             ok, msg = record_sale(pid, qty, user["id"])
             if ok:
