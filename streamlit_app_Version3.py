@@ -136,13 +136,9 @@ def add_product(sku, name, cost, price):
 
 def update_product(pid, sku, name, cost, price, role):
     c = conn.cursor()
-
     if role != "boss":
-        # SECURITY: karyawan tidak boleh ubah harga
         c.execute("""
-            UPDATE products
-            SET sku=?, name=?
-            WHERE id=?
+            UPDATE products SET sku=?, name=? WHERE id=?
         """, (sku, name, pid))
     else:
         c.execute("""
@@ -150,7 +146,6 @@ def update_product(pid, sku, name, cost, price, role):
             SET sku=?, name=?, cost=?, price=?
             WHERE id=?
         """, (sku, name, cost, price, pid))
-
     conn.commit()
 
 def delete_product(pid):
@@ -175,7 +170,6 @@ def move_stock(pid, qty):
     c.execute("SELECT warehouse_stock FROM products WHERE id=?", (pid,))
     if qty > c.fetchone()[0]:
         return False, "Stok gudang tidak cukup"
-
     c.execute("""
         UPDATE products
         SET warehouse_stock = warehouse_stock - ?,
@@ -225,64 +219,18 @@ def get_sales(role):
 
 def get_today_summary():
     today = datetime.datetime.utcnow().date().isoformat()
-    q = """
-        SELECT 
-            COALESCE(SUM(total),0),
-            COALESCE(SUM(profit),0)
-        FROM sales
-        WHERE date(sold_at)=?
-    """
     c = conn.cursor()
-    c.execute(q, (today,))
+    c.execute("""
+        SELECT COALESCE(SUM(total),0), COALESCE(SUM(profit),0)
+        FROM sales WHERE date(sold_at)=?
+    """, (today,))
     return c.fetchone()
-    
-# =============================
-# PDF EXPORT (BOSS ONLY)
-# =============================
-def export_sales_pdf(df):
-    filename = "laporan_penjualan.pdf"
-    doc = SimpleDocTemplate(filename, pagesize=A4)
-    styles = getSampleStyleSheet()
-    elements = []
-
-    # Judul
-    elements.append(Paragraph("LAPORAN PENJUALAN", styles["Title"]))
-    elements.append(Paragraph(
-        f"Tanggal Cetak: {datetime.datetime.now().strftime('%d-%m-%Y %H:%M')}",
-        styles["Normal"]
-    ))
-    elements.append(Paragraph("<br/>", styles["Normal"]))
-
-    # Tabel histori
-    table_data = [df.columns.tolist()] + df.values.tolist()
-    table = Table(table_data, repeatRows=1)
-    elements.append(table)
-
-    # =============================
-    # TOTAL & P&L
-    # =============================
-    total_penjualan = df["total"].sum()
-    total_profit = df["profit"].sum() if "profit" in df.columns else 0
-
-    elements.append(Paragraph("<br/>", styles["Normal"]))
-    elements.append(Paragraph(
-        f"<b>Total Penjualan:</b> Rp {int(total_penjualan):,}",
-        styles["Normal"]
-    ))
-    elements.append(Paragraph(
-        f"<b>Total P&L:</b> Rp {int(total_profit):,}",
-        styles["Normal"]
-    ))
-
-    doc.build(elements)
-    return filename
 
 # =============================
 # LOGIN
 # =============================
 if st.session_state.user is None:
     st.title("Login Sistem")
-
     u = st.text_input("Username")
     p = st.text_input("Password", type="password")
 
@@ -309,7 +257,6 @@ else:
     role = user["role"]
 
     st.sidebar.write(f"{user['username']} ({role})")
-
     if st.sidebar.button("Logout"):
         st.session_state.user = None
         st.rerun()
@@ -323,169 +270,38 @@ else:
     )
 
     # =============================
-    # HOME
+    # PENJUALAN (IMPROVED UX)
     # =============================
-    if menu == "Home":
-        st.header("Dashboard")
-        st.subheader(f"Status Toko: {get_store_status().upper()}")
-
-        if role == "boss":
-            col1, col2 = st.columns(2)
-            if col1.button("Buka Toko"):
-                set_store_status("open")
-                st.rerun()
-            if col2.button("Tutup Toko"):
-                set_store_status("closed")
-                st.rerun()
-
-    # =============================
-    # STOK GUDANG
-    # =============================
-    elif menu == "Stok Gudang":
-        st.header("Stok Gudang")
-
-        with st.form("add_prod"):
-            sku = st.text_input("SKU")
-            name = st.text_input("Nama Produk")
-            cost = st.number_input("Harga Modal", min_value=0.0)
-            price = st.number_input("Harga Jual", min_value=0.0)
-            if st.form_submit_button("Tambah Produk"):
-                add_product(sku, name, cost, price)
-                st.rerun()
+    if menu == "Penjualan":
+        st.header("Penjualan Produk")
 
         df = get_products()
-        if not df.empty:
-            pid = st.selectbox(
-                "Pilih Produk",
-                df["id"],
-                format_func=lambda x: df[df.id == x]["name"].values[0]
-            )
-
-            row = df[df.id == pid].iloc[0]
-
-            if st.button("✏️ Edit Produk"):
-                st.session_state.edit_product_id = pid
-
-            if st.session_state.edit_product_id == pid:
-                with st.form("edit_prod"):
-                    sku = st.text_input("SKU", row["sku"])
-                    name = st.text_input("Nama Produk", row["name"])
-
-                    if role == "boss":
-                        cost = st.number_input(
-                            "Harga Modal", value=row["cost"])
-                        price = st.number_input(
-                            "Harga Jual", value=row["price"])
-                    else:
-                        st.info("Harga hanya bisa diubah oleh boss")
-                        cost = row["cost"]
-                        price = row["price"]
-
-                    if st.form_submit_button("Simpan"):
-                        update_product(
-                            pid, sku, name, cost, price, role)
-                        st.session_state.edit_product_id = None
-                        st.rerun()
-
-            qty = st.number_input("Tambah Stok Gudang", min_value=1)
-            if st.button("Tambah Stok"):
-                add_warehouse_stock(pid, qty)
-                st.rerun()
-
-            if st.button("Hapus Produk"):
-                ok, msg = delete_product(pid)
-                if ok:
-                    st.success(msg)
-                    st.rerun()
-                else:
-                    st.error(msg)
-
-            st.dataframe(df[["sku", "name", "warehouse_stock"]])
-
-    # =============================
-    # PRODUK & STOK
-    # =============================
-    elif menu == "Produk & Stok":
-        st.header("Stok Harian")
-
-        df = get_products()
-
         if df.empty:
             st.info("Belum ada produk")
         else:
-            pid = st.selectbox(
-                "Pilih Produk",
-                df["id"],
-                format_func=lambda x: df[df.id == x]["name"].values[0]
+            mapping = {
+                f"{r['name']} (Sisa: {r['stock']})": r['id']
+                for _, r in df.iterrows()
+            }
+
+            pilih = st.selectbox("Pilih Produk", mapping.keys())
+            pid = mapping[pilih]
+            sisa = int(df[df["id"] == pid]["stock"].values[0])
+
+            if sisa == 0:
+                st.warning("Stok produk ini HABIS")
+
+            qty = st.number_input(
+                "Qty",
+                min_value=1,
+                max_value=max(1, sisa),
+                disabled=(sisa == 0)
             )
 
-            qty = st.number_input("Jumlah Ambil dari Gudang", min_value=1)
-
-            if st.button("Ambil ke Stok Harian"):
-                ok, msg = move_stock(pid, qty)
+            if st.button("Simpan Penjualan"):
+                ok, msg = record_sale(pid, qty, user["id"])
                 if ok:
                     st.success(msg)
                     st.rerun()
                 else:
                     st.error(msg)
-
-            st.subheader("📦 Tabel Stok Harian")
-            st.dataframe(df[["sku", "name", "stock"]])
-
-
-    # =============================
-    # PENJUALAN
-    # =============================
-    elif menu == "Penjualan":
-        df = get_products()
-        pid = st.selectbox(
-            "Produk",
-            df["id"],
-            format_func=lambda x: df[df.id == x]["name"].values[0]
-        )
-        qty = st.number_input("Qty", min_value=1)
-        if st.button("Simpan Penjualan"):
-            ok, msg = record_sale(pid, qty, user["id"])
-            if ok:
-                st.success(msg)
-                st.rerun()
-            else:
-                st.error(msg)
-
-    # =============================
-    # HISTORI PENJUALAN
-    # =============================
-    elif menu == "Histori Penjualan":
-        df = get_sales(role)
-        st.dataframe(df)
-
-        if role == "boss" and not df.empty:
-            if st.button("📄 Export PDF"):
-                pdf = export_sales_pdf(df)
-                with open(pdf, "rb") as f:
-                    st.download_button(
-                        "Download PDF",
-                        f,
-                        file_name=pdf,
-                        mime="application/pdf"
-                    )
-
-    # =============================
-    # USER MANAGEMENT
-    # =============================
-    elif menu == "Manajemen User":
-        with st.form("add_user"):
-            u = st.text_input("Username")
-            p = st.text_input("Password", type="password")
-            r = st.selectbox("Role", ["boss", "karyawan"])
-            if st.form_submit_button("Tambah User"):
-                try:
-                    conn.cursor().execute(
-                        "INSERT INTO users VALUES (NULL,?,?,?,?)",
-                        (u, hash_password(p), r,
-                         datetime.datetime.utcnow().isoformat())
-                    )
-                    conn.commit()
-                    st.rerun()
-                except:
-                    st.error("Username sudah digunakan")
