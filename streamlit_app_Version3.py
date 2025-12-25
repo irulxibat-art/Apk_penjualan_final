@@ -80,6 +80,20 @@ def init_db():
 
     conn.commit()
 
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS sales_archive (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        archive_date TEXT,
+        week_number INTEGER,
+        month INTEGER,
+        year INTEGER,
+        total_sales REAL,
+        total_profit REAL,
+        pdf_file TEXT,
+        archived_at TEXT
+        )
+        """)
+
 init_db()
 
 # =============================
@@ -235,7 +249,92 @@ def get_today_summary():
     c = conn.cursor()
     c.execute(q, (today,))
     return c.fetchone()
+
+def check_and_archive_daily_sales():
+    today = datetime.date.today()
+
+    c = conn.cursor()
+    c.execute("SELECT MAX(archive_date) FROM sales_archive")
+    last_archive = c.fetchone()[0]
+
+    if last_archive == today.isoformat():
+        return
+        
+    yesterday = today - datetime.timedelta(days=1)
     
+    c.execute("""
+     SELECT
+         SUM(total),
+         SUM(profit)
+     FROM sales
+     WHERE date(sold_at)=?
+     """, (yesterday.isoformat(),))
+    
+     result = c.fetchone()
+ 
+     if result[0] is None:
+         return
+    
+     total_sales = result[0]
+     total_profit = result[1]
+
+     week_number = (yesterday.day - 1) // 7 + 1
+    
+     pdf_filename = (
+         f"Laporan_Harian_"
+         f"{yesterday.strftime('%A')}_"
+         f"{yesterday.strftime('%d-%m-%Y')}_"
+         f"Minggu-{week_number}.pdf"
+     )
+
+     df_yesterday = pd.read_sql(
+         """
+         SELECT p.name, s.qty, s.total, s.profit, s.sold_at
+         FROM sales s
+         JOIN products p ON s.product_id = p.id
+         WHERE date(s.sold_at)=?
+         """,
+         conn,
+         params=(yesterday.isoformat(),)
+     )
+     export_sales_pdf(
+         df_yesterday,
+         pdf_filename,
+         title=f"Laporan Penjualan Harian {yesterday.strftime('%d-%m-%Y')}",
+         week_number=week_number
+     )
+
+     c.execute("""
+         INSERT INTO sales_archive (
+             archive_date,
+             week_number,
+             month,
+             year,
+             total_sales,
+             total_profit,
+             pdf_file,
+             archived_at
+         )
+         VALUES (?,?,?,?,?,?,?,?)
+     """, (
+         yesterday.isoformat(),
+         week_number,
+         yesterday.month,
+         yesterday.year,
+         total_sales,
+         total_profit,
+         pdf_filename,
+         datetime.datetime.now().isoformat()
+     ))
+    
+     conn.commit()
+
+     c.execute(
+         "DELETE FROM sales WHERE date(sold_at)=?",
+         (yesterday.isoformat(),)
+     )
+     conn.commit()
+
 # =============================
 # PDF EXPORT (BOSS ONLY)
 # =============================
@@ -468,19 +567,60 @@ else:
     # HISTORI PENJUALAN
     # =============================
     elif menu == "Histori Penjualan":
-        df = get_sales(role)
-        st.dataframe(df)
+        check_and_archive_daily_sales()
 
-        if role == "boss" and not df.empty:
-            if st.button("📄 Export PDF"):
-                pdf = export_sales_pdf(df)
-                with open(pdf, "rb") as f:
-                    st.download_button(
-                        "Download PDF",
-                        f,
-                        file_name=pdf,
-                        mime="application/pdf"
-                    )
+        st.header("History Penjualan")
+
+        if role == "boss":
+            mode = st.radio(
+            "Pilih Mode History",
+            ["History Harian", "History Mingguan"]
+                )
+        if mode == "History Harian":
+            df = pd.read_sql(
+                """
+                SELECT p.name, s.qty, s.total, s.profit, s.sold_at
+                FROM sales s
+                JOIN products p ON s.product_id = p.id
+                WHERE date(s.sold_at)=date('now')
+                """,
+                conn
+                )
+
+                st.subheader("History Harian (Hari Ini)")
+                st.dataframe(df)
+
+        if mode == "History Mingguan":
+            df = pd.read_sql(
+                """
+                SELECT
+                    archive_date,
+                    week_number,
+                    total_sales,
+                    total_profit,
+                    pdf_file
+                FROM sales_archive
+                ORDER BY archive_date DESC
+                """,
+                conn
+            )
+
+            st.subheader("History Mingguan")
+            st.dataframe(df)
+
+        if role != "boss":
+            df = pd.read_sql(
+            """
+            SELECT p.name, s.qty, s.total, s.sold_at
+            FROM sales s
+            JOIN products p ON s.product_id = p.id
+            WHERE date(s.sold_at)=date('now')
+            """,
+            conn
+        )
+
+        st.subheader("History Harian (Hari Ini)")
+        st.dataframe(df)
 
     # =============================
     # USER MANAGEMENT
