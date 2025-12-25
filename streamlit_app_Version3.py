@@ -300,8 +300,7 @@ def check_and_archive_daily_sales():
     export_sales_pdf(
         df_yesterday,
         pdf_filename,
-        title=f"Laporan Penjualan Harian {yesterday.strftime('%d-%m-%Y')}",
-        week_number=week_number
+        title=f"Laporan Penjualan Harian {yesterday.strftime('%d-%m-%Y')}"
     )
 
     c.execute("""
@@ -339,8 +338,6 @@ def check_and_archive_daily_sales():
 # PDF EXPORT (BOSS ONLY)
 # =============================
 def export_sales_pdf(df, filename, title):
-    filename = "laporan_penjualan.pdf"
-    doc = SimpleDocTemplate(filename, pagesize=A4)
     styles = getSampleStyleSheet()
     elements = []
 
