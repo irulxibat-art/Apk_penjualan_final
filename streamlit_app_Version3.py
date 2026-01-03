@@ -6,6 +6,20 @@ import datetime
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
+import psycopg2
+import streamlit as st
+from supabase import create_client
+
+supabase = create_client(
+    st.secrets["https://kmzaakxrfyspaiargmdj.supabase.co"],
+    st.secrets["sb_publishable_ZYy0hyW7QtWU00s0FCz4WQ_AxlgPLSW"]
+)
+
+@st.cache_resource
+def get_connection():
+    return psycopg2.connect(st.secrets["SUPABASE_DB_URL"])
+
+conn = get_connection()
 
 # =============================
 # PAGE CONFIG
