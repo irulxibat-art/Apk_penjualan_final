@@ -1,13 +1,11 @@
+import psycopg2
 import streamlit as st
-import sqlite3
 import pandas as pd
 import hashlib
 import datetime
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.pagesizes import A4
-import psycopg2
-import streamlit as st
 from supabase import create_client
 
 supabase = create_client(
@@ -17,7 +15,7 @@ supabase = create_client(
 
 @st.cache_resource
 def get_connection():
-    return psycopg2.connect(st.secrets["SUPABASE_DB_URL"])
+    return psycopg2.connect(st.secrets["https://kmzaakxrfyspaiargmdj.supabase.co"])
 
 conn = get_connection()
 
@@ -38,16 +36,6 @@ if "edit_product_id" not in st.session_state:
 # =============================
 # DATABASE
 # =============================
-DB_NAME = "inventory.db"
-
-def get_conn():
-    return sqlite3.connect(DB_NAME, check_same_thread=False)
-
-conn = get_conn()
-
-def init_db():
-    c = conn.cursor()
-
     c.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,8 +95,6 @@ def init_db():
         archived_at TEXT
         )
         """)
-
-init_db()
 
 # =============================
 # AUTH
