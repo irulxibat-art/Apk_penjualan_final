@@ -55,10 +55,13 @@ create_default_user()
 def login_user(u, p):
     c = conn.cursor()
     c.execute(
-        "SELECT * FROM users WHERE username=? AND password=?",
-        (u, hash_password(p))
-    )
-    return c.fetchone()
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT id, role FROM users WHERE username=%s AND password=%s",
+            (username, password)
+        ))
+        user = cur.fetchone()
+
 
 # =============================
 # STORE STATUS
