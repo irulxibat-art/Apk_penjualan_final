@@ -18,7 +18,7 @@ st.set_page_config(page_title="Inventory System", layout="wide")
 
 # Try a few common secret keys for connection string
 def _get_conn_string():
-    for key in ("postgres_conn", "DATABASE_URL", "POSTGRES_CONN"):
+    for key in ("postgresql://postgres:[YOUR-PASSWORD]@db.kmzaakxrfyspaiargmdj.supabase.co:5432/postgres", "databaseurl", "postgresql://postgres:[YOUR-PASSWORD]@db.kmzaakxrfyspaiargmdj.supabase.co:5432/postgres"):
         if key in st.secrets:
             return st.secrets[key]
     return None
