@@ -34,69 +34,6 @@ if "edit_product_id" not in st.session_state:
     st.session_state.edit_product_id = None
 
 # =============================
-# DATABASE
-# =============================
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        password TEXT,
-        role TEXT,
-        created_at TEXT
-    )""")
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS products (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sku TEXT UNIQUE,
-        name TEXT,
-        cost REAL,
-        price REAL,
-        stock INTEGER DEFAULT 0,
-        warehouse_stock INTEGER DEFAULT 0,
-        created_at TEXT
-    )""")
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        product_id INTEGER,
-        qty INTEGER,
-        cost_each REAL,
-        price_each REAL,
-        total REAL,
-        profit REAL,
-        sold_by INTEGER,
-        sold_at TEXT
-    )""")
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS store_status (
-        id INTEGER PRIMARY KEY,
-        status TEXT
-    )""")
-
-    c.execute("SELECT COUNT(*) FROM store_status")
-    if c.fetchone()[0] == 0:
-        c.execute("INSERT INTO store_status VALUES (1,'open')")
-
-    conn.commit()
-
-    c.execute("""
-    CREATE TABLE IF NOT EXISTS sales_archive (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        archive_date TEXT,
-        week_number INTEGER,
-        month INTEGER,
-        year INTEGER,
-        total_sales REAL,
-        total_profit REAL,
-        pdf_file TEXT,
-        archived_at TEXT
-        )
-        """)
-
-# =============================
 # AUTH
 # =============================
 def hash_password(p):
