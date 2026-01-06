@@ -10,7 +10,7 @@ from supabase import create_client
 
 supabase = create_client(
     st.secrets["https://kmzaakxrfyspaiargmdj.supabase.co"],
-    st.secrets["sb_publishable_ZYy0hyW7QtWU00s0FCz4WQ_AxlgPLSW"]
+    st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttemFha3hyZnlzcGFpYXJnbWRqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzI4ODk3NiwiZXhwIjoyMDgyODY0OTc2fQ.r6IRyNKPFHMjkO35n-OUfESgPUH73kbnzLMnCx5e5GU"]
 )
 
 @st.cache_resource
