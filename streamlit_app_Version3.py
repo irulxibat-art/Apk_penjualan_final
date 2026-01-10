@@ -290,7 +290,7 @@ if st.session_state.user is None:
                 st.error("Toko sedang tutup")
             else:
                 st.session_state.user = user
-                st.experimental_rerun()
+                st.rerun()
         else:
             st.error("Login gagal")
 
@@ -304,7 +304,7 @@ else:
     st.sidebar.write(f"{user['username']} ({role})")
     if st.sidebar.button("Logout"):
         st.session_state.user = None
-        st.experimental_rerun()
+        st.rerun()
 
     menu = st.sidebar.selectbox(
         "Menu",
@@ -321,10 +321,10 @@ else:
             col1, col2 = st.columns(2)
             if col1.button("Buka Toko"):
                 set_store_status("open")
-                st.experimental_rerun()
+                st.rerun()
             if col2.button("Tutup Toko"):
                 set_store_status("closed")
-                st.experimental_rerun()
+                st.rerun()
 
     # Stok Gudang
     elif menu == "Stok Gudang":
@@ -339,7 +339,7 @@ else:
                     st.error("SKU dan Nama wajib diisi")
                 else:
                     add_product(sku, name, cost, price)
-                    st.experimental_rerun()
+                    st.rerun()
 
         df = get_products()
         if not df.empty:
@@ -363,18 +363,18 @@ else:
                     if st.form_submit_button("Simpan"):
                         update_product(pid, sku, name, cost, price, role)
                         st.session_state.edit_product_id = None
-                        st.experimental_rerun()
+                        st.rerun()
 
             qty = st.number_input("Tambah Stok Gudang", min_value=1, value=1)
             if st.button("Tambah Stok"):
                 add_warehouse_stock(pid, int(qty))
-                st.experimental_rerun()
+                st.rerun()
 
             if st.button("Hapus Produk"):
                 ok, msg = delete_product(pid)
                 if ok:
                     st.success(msg)
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error(msg)
 
@@ -393,7 +393,7 @@ else:
                 ok, msg = move_stock(pid, int(qty))
                 if ok:
                     st.success(msg)
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error(msg)
             st.subheader("📦 Tabel Stok Harian")
@@ -416,7 +416,7 @@ else:
                 ok, msg = record_sale(pid, int(qty), user["id"])
                 if ok:
                     st.success(msg)
-                    st.experimental_rerun()
+                    st.rerun()
                 else:
                     st.error(msg)
 
