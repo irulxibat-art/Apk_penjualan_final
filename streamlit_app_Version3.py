@@ -21,7 +21,7 @@ st.set_page_config(page_title="Inventory System", layout="wide")
 
 SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_SERVICE_KEY = st.secrets["SUPABASE_SERVICE_KEY"]
-ANON_KEY = st.secrets["ANON_KEY"]
+ANON_KEY = st.secrets["SUPABASE_ANON_KEY"]
 POSTGRES_CONN = st.secrets["SUPABASE_DB_URL"] 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
