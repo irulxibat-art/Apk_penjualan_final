@@ -498,4 +498,18 @@ else:
             st.metric(label="Total Penjualan Hari Ini", value=f"💸Rp {total_sales:,}")
 
     # Manajemen User
-    elif menu 
+elif menu == "Manajemen User":
+    st.header("Manajemen User")
+
+    with st.form("add_user"):
+        new_user = st.text_input("Username Baru")
+        new_pass = st.text_input("Password", type="password")
+        role = st.selectbox("Role", ["karyawan", "boss"])
+        if st.form_submit_button("Tambah User"):
+            if not new_user or not new_pass:
+                st.error("Username dan password wajib diisi")
+            else:
+                create_user(new_user, new_pass, role)
+                st.success("User berhasil ditambahkan")
+                st.rerun()
+
