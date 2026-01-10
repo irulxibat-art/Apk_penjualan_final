@@ -245,6 +245,12 @@ def upload_pdf_to_supabase(file_path, file_name):
 # -------------------------
 # ARCHIVE DAILY SALES
 # -------------------------
+cursor.execute("""
+    INSERT INTO sales_archive 
+    (archive_date, week_number, month, year, total_sales, total_profit, pdf_url)
+    VALUES (%s,%s,%s,%s,%s,%s,%s)
+""", (date, week, month, year, total, profit, pdf_url))
+
 def check_and_archive_daily_sales():
     today = datetime.date.today()
     yesterday = today - datetime.timedelta(days=1)
