@@ -229,6 +229,19 @@ def export_sales_pdf_bytes(df: pd.DataFrame, title: str = None) -> bytes:
     buffer.seek(0)
     return buffer.read()
 
+def upload_pdf_to_supabase(file_path, file_name):
+    with open(file_path, "rb") as f:
+        file_bytes = f.read()
+
+    response = supabase.storage.from_("sales-pdf").upload(
+        file_name,
+        file_bytes,
+        {"content-type": "application/pdf"}
+    )
+
+    public_url = supabase.storage.from_("sales-pdf").get_public_url(file_name)
+    return public_url
+
 # -------------------------
 # ARCHIVE DAILY SALES
 # -------------------------
