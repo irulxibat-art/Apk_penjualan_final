@@ -19,18 +19,10 @@ from supabase import create_client
 # -------------------------
 st.set_page_config(page_title="Inventory System", layout="wide")
 
-REQUIRED_SECRETS = ["https://kmzaakxrfyspaiargmdj.supabase.co", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttemFha3hyZnlzcGFpYXJnbWRqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzI4ODk3NiwiZXhwIjoyMDgyODY0OTc2fQ.r6IRyNKPFHMjkO35n-OUfESgPUH73kbnzLMnCx5e5GU", "sb_publishable_ZYy0hyW7QtWU00s0FCz4WQ_AxlgPLSW", "postgres_conn:postgresql://postgres:[YOUR-PASSWORD]@db.kmzaakxrfyspaiargmdj.supabase.co:5432/postgre"]
-missing = [k for k in REQUIRED_SECRETS if k not in st.secrets]
-if missing:
-    st.error(f"Missing secrets: {', '.join(missing)}. Tambahkan ke Streamlit Secrets terlebih dahulu.")
-    st.stop()
-
-SUPABASE_URL = st.secrets["https://kmzaakxrfyspaiargmdj.supabase.co"]
-SUPABASE_SERVICE_KEY = st.secrets["eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImttemFha3hyZnlzcGFpYXJnbWRqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NzI4ODk3NiwiZXhwIjoyMDgyODY0OTc2fQ.r6IRyNKPFHMjkO35n-OUfESgPUH73kbnzLMnCx5e5GU"]
-ANON_KEY = st.secrets["sb_publishable_ZYy0hyW7QtWU00s0FCz4WQ_AxlgPLSW"]
-POSTGRES_CONN = st.secrets["postgres_conn:postgresql://postgres:[YOUR-PASSWORD]@db.kmzaakxrfyspaiargmdj.supabase.co:5432/postgre"]  # e.g. postgresql://postgres:pass@host:5432/postgre
-
-# Initialize Supabase client (server-side, using service key)
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_SERVICE_KEY = st.secrets["SUPABASE_SERVICE_KEY"]
+ANON_KEY = st.secrets["ANON_KEY"]
+POSTGRES_CONN = st.secrets["SUPABASE_DB_URL"] 
 supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
 # -------------------------
