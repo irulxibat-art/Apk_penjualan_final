@@ -3,3 +3,4 @@ pandas
 reportlab
 psycopg2-binary
 supabase
+bcrypt
