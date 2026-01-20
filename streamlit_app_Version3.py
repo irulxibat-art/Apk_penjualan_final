@@ -21,7 +21,7 @@ if "user" not in st.session_state:
 # AUTH
 # =======================
 def login(username, password):
-    res = supabase.table("users").select("*").eq("username", username).eq("password", password).execute()
+    res = supabase.table("app_users").select("*").eq("username", username).eq("password", password).execute()
     return res.data[0] if res.data else None
 
 # =======================
