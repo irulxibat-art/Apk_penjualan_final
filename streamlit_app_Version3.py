@@ -160,21 +160,21 @@ else:
     st.error(products_data)
 
 
-    # =====================================
-    # PAGE: SUMMARY
-    # =====================================
-    elif st.session_state.menu == "Summary":
+# =====================================
+# PAGE: SUMMARY
+# =====================================
+elif st.session_state.menu == "Summary":
 
-        st.subheader("📊 Total Hari Ini")
+    st.subheader("📊 Total Hari Ini")
 
-        summary = get_summary_today(username)
+    summary = get_summary_today(username)
 
-        if summary.get("status") == "success":
-            st.metric("Total Sales", f"Rp {summary['total_sales']:,}")
-            st.metric("Total Profit", f"Rp {summary['total_profit']:,}")
-            st.metric("Total Transaksi", summary["total_transaksi"])
-        else:
-            st.error("Gagal mengambil data")
+    if summary.get("status") == "success":
+        st.metric("Total Sales", f"Rp {summary['total_sales']:,}")
+        st.metric("Total Profit", f"Rp {summary['total_profit']:,}")
+        st.metric("Total Transaksi", summary["total_transaksi"])
+    else:
+        st.error("Gagal mengambil data")
 
     # =====================================
     # PAGE: WEEKLY (BOSS)
