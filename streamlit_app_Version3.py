@@ -161,12 +161,14 @@ else:
             "username": st.session_state.username
         })
 
-        if weekly.get("status") == "success":
-            st.metric("Sales", f"Rp {weekly['total_sales']:,}")
-            st.metric("Profit", f"Rp {weekly['total_profit']:,}")
-            st.metric("Transaksi", weekly["total_transaksi"])
+        if weekly.get("status") != "success":
+            st.error("Tidak bisa mengambil data weekly")
         else:
-            st.error(weekly)
+            st.metric("Transaksi", weekly.get("total_transaksi", 0))
+            st.metric("Pendapatan", weekly.get("total_sales", 0))
+            st.metric("Profit", weekly.get("total_profit", 0))
+
+            st.dataframe(weekly.get("data", []))
 
     elif st.session_state.menu == "Add Product" and role == "boss":
 
