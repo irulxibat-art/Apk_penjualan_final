@@ -109,29 +109,6 @@ else:
         st.session_state.menu = "Transaksi"
 
     # =====================================
-    # BOTTOM MENU
-    # =====================================
-    st.divider()
-
-    cols = st.columns(5 if role == "boss" else 2)
-
-    if cols[0].button("🛒 Transaksi"):
-        st.session_state.menu = "Transaksi"
-
-    if cols[1].button("📊 Summary"):
-        st.session_state.menu = "Summary"
-
-    if role == "boss":
-        if cols[2].button("📦 Add Product"):
-            st.session_state.menu = "Add Product"
-        if cols[3].button("📈 Weekly"):
-            st.session_state.menu = "Weekly"
-        if cols[4].button("📤 Ambil Stok"):
-            st.session_state.menu = "Ambil Stok"
-
-    st.divider()
-
-    # =====================================
     # PAGE: TRANSAKSI
     # =====================================
     if st.session_state.menu == "Transaksi":
@@ -244,6 +221,73 @@ else:
                 st.success("Stok berhasil diambil")
             else:
                 st.error(result.get("message", "Gagal ambil stok"))
+
+    # =====================================
+    # PAGE: STATUS TOKO
+    # =====================================
+
+    elif st.session_state.menu == "Status Toko" and role == "boss":
+
+        st.subheader("🏪 Status Toko")
+
+        status_data = get_store_status()
+
+        if status_data.get("status") == "success":
+            current_status = status_data["store_status"]
+
+            if current_status == "open":
+                st.success("Toko Sedang BUKA")
+            else:
+                st.error("Toko Sedang TUTUP")
+
+            pilihan = st.radio(
+                "Ubah Status",
+                ["open", "closed"],
+                horizontal=True,
+                index=0 if current_status == "open" else 1
+            )
+
+            if st.button("Simpan Perubahan"):
+                result = set_store_status(username, pilihan)
+
+                if result.get("status") == "success":
+                    st.success("Status berhasil diubah")
+                    st.rerun()
+                else:
+                    st.error("Gagal mengubah status")
+        else:
+            st.error("Gagal mengambil status toko")
+
+    # ==========================
+    # BOTTOM NAVIGATION
+    # ==========================
+
+    st.markdown("---")
+
+    if role == "boss":
+        menu_cols = st.columns(6)
+    else:
+        menu_cols = st.columns(2)
+
+    if menu_cols[0].button("🛒", use_container_width=True):
+        st.session_state.menu = "Transaksi"
+
+    if menu_cols[1].button("📊", use_container_width=True):
+        st.session_state.menu = "Summary"
+
+    if role == "boss":
+        if menu_cols[2].button("📦", use_container_width=True):
+            st.session_state.menu = "Add Product"
+
+        if menu_cols[3].button("📈", use_container_width=True):
+            st.session_state.menu = "Weekly"
+
+        if menu_cols[4].button("📤", use_container_width=True):
+            st.session_state.menu = "Ambil Stok"
+
+        if menu_cols[5].button("🏪", use_container_width=True):
+            st.session_state.menu = "Status Toko"
+
 
     # =====================================
     # LOGOUT
