@@ -132,9 +132,9 @@ else:
 
         products_data = products()
 
-        if products_data.get("status") == "success":
+        if isinstance(products_data, list):
 
-            products = products_data["data"]
+            products = products_data
 
             product_dict = {
                 p["name"]: p["id"] for p in products
@@ -155,9 +155,10 @@ else:
                 if result.get("status") == "success":
                     st.success("Transaksi berhasil")
                 else:
-                    st.error(result.get("message", "Gagal transaksi"))
-        else:
-            st.error("Gagal mengambil produk")
+                    st.error(result)
+    else:
+        st.error(products_data)
+
 
     # =====================================
     # PAGE: SUMMARY
@@ -231,7 +232,7 @@ else:
 
         products_data = products()
 
-        if products_data.get("status") == "success":
+        if isinstance(products_data, list):
 
             products = products_data["data"]
 
