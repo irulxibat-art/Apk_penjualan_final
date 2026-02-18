@@ -229,13 +229,36 @@ else:
 
         st.subheader("📤 Ambil Stok Harian")
 
-        if st.button("Ambil Stok"):
-            result = ambil_stok(username)
+        products_data = get_products()
 
-            if result.get("status") == "success":
-                st.success("Stok berhasil diambil")
-            else:
-                st.error(result.get("message", "Gagal ambil stok"))
+        if products_data.get("status") == "success":
+
+            products = products_data["data"]
+
+            product_dict = {
+                p["name"]: p["id"] for p in products
+            }
+
+            selected_name = st.selectbox(
+                "Pilih Produk",
+                list(product_dict.keys())
+            )
+
+            qty = st.number_input("Jumlah Ambil", min_value=1, step=1)
+
+            if st.button("Ambil Stok"):
+                product_id = product_dict[selected_name]
+
+                result = ambil_stok_harian(username, product_id, qty)
+
+                if result.get("status") == "success":
+                    st.success("Stok berhasil dipindahkan ke stok harian")
+                    st.rerun()
+                else:
+                    st.error(result.get("status", "Gagal ambil stok"))
+
+        else:
+            st.error("Gagal mengambil daftar produk")
 
     # =====================================
     # PAGE: STATUS TOKO
