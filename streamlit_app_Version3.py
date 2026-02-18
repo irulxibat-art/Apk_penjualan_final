@@ -123,41 +123,41 @@ else:
     if "menu" not in st.session_state:
         st.session_state.menu = "Transaksi"
 
-    # =====================================
-    # PAGE: TRANSAKSI
-    # =====================================
-    if st.session_state.menu == "Transaksi":
+# =====================================
+# PAGE: TRANSAKSI
+# =====================================
+if st.session_state.menu == "Transaksi":
 
-        st.subheader("🛒 Transaksi Penjualan")
+    st.subheader("🛒 Transaksi Penjualan")
 
-        products_data = products()
+    products_data = products()
 
-        if isinstance(products_data, list):
+    if isinstance(products_data, list):
 
-            products = products_data
+        products = products_data
 
-            product_dict = {
-                p["name"]: p["id"] for p in products
-            }
+        product_dict = {
+            p["name"]: p["id"] for p in products
+        }
 
-            selected_name = st.selectbox(
-                "Pilih Produk",
-                list(product_dict.keys())
-            )
+        selected_name = st.selectbox(
+            "Pilih Produk",
+            list(product_dict.keys())
+        )
 
-            qty = st.number_input("Qty", min_value=1, step=1)
+        qty = st.number_input("Qty", min_value=1, step=1)
 
-            if st.button("Proses Transaksi"):
-                product_id = product_dict[selected_name]
+        if st.button("Proses Transaksi"):
+            product_id = product_dict[selected_name]
 
-                result = jual_produk(username, product_id, qty)
+            result = jual_produk(username, product_id, qty)
 
-                if result.get("status") == "success":
-                    st.success("Transaksi berhasil")
-                else:
-                    st.error(result)
-    else:
-        st.error(products_data)
+            if result.get("status") == "success":
+                st.success("Transaksi berhasil")
+            else:
+                st.error(result)
+else:
+    st.error(products_data)
 
 
     # =====================================
