@@ -122,7 +122,7 @@ else:
         if isinstance(products_data, list):
 
             product_dict = {
-                p["name"]: p["id"] for p in products_data
+                p["product"]: p["id"] for p in products_data
             }
 
             selected = st.selectbox("Pilih Produk", list(product_dict.keys()))
