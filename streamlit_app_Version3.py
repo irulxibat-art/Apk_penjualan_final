@@ -156,7 +156,10 @@ else:
 
         st.subheader("📈 Weekly")
 
-        weekly = get_weekly(username)
+        weekly = api_call({
+            "action": "sales_weekly",
+            "username": st.session_state.username
+        })
 
         if weekly.get("status") == "success":
             st.metric("Sales", f"Rp {weekly['total_sales']:,}")
