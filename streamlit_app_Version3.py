@@ -28,7 +28,7 @@ def login(username, password):
 
 def get_products():
     return api_call({
-        "action": "get_products"
+        "action": "products"
     })
 
 
