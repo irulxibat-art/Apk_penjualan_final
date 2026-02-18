@@ -229,7 +229,7 @@ else:
 
         st.subheader("📤 Ambil Stok Harian")
 
-        products_data = get_products()
+        products_data = products()
 
         if products_data.get("status") == "success":
 
@@ -249,7 +249,7 @@ else:
             if st.button("Ambil Stok"):
                 product_id = product_dict[selected_name]
 
-                result = ambil_stok_harian(username, product_id, qty)
+                result = ambil_stok(username, product_id, qty)
 
                 if result.get("status") == "success":
                     st.success("Stok berhasil dipindahkan ke stok harian")
