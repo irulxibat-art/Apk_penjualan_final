@@ -253,20 +253,20 @@ else:
     else:
         cols = st.columns(2)
 
-    if cols[0].button("🛒"):
+    if cols[0].button("🛒Transaksi"):
         st.session_state.menu = "Transaksi"
 
-    if cols[1].button("📊"):
+    if cols[1].button("📊P&L"):
         st.session_state.menu = "Summary"
 
     if role == "boss":
-        if cols[2].button("📦"):
+        if cols[2].button("📦Tambah produk"):
             st.session_state.menu = "Add Product"
-        if cols[3].button("📈"):
+        if cols[3].button("📈Total Mingguan"):
             st.session_state.menu = "Weekly"
-        if cols[4].button("📤"):
+        if cols[4].button("📤Ambil stock"):
             st.session_state.menu = "Ambil Stok"
-        if cols[5].button("🏪"):
+        if cols[5].button("🏪Status Toko"):
             st.session_state.menu = "Status Toko"
 
     # ===============================
