@@ -1,5 +1,2 @@
 streamlit
-pandas
-reportlab
-supabase
-fpdf
+requests
