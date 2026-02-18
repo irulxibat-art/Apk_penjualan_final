@@ -230,7 +230,7 @@ else:
         st.subheader("📤 Ambil Stok Harian")
 
         if st.button("Ambil Stok"):
-            result = ambil_stok_harian(username)
+            result = ambil_stok(username)
 
             if result.get("status") == "success":
                 st.success("Stok berhasil diambil")
