@@ -130,7 +130,7 @@ else:
 
         st.subheader("🛒 Transaksi Penjualan")
 
-        products_data = get_products()
+        products_data = products()
 
         if products_data.get("status") == "success":
 
