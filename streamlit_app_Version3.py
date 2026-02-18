@@ -73,6 +73,18 @@ def ambil_stok_harian(username):
         "username": username
     })
 
+def get_store_status():
+    return api_call({
+        "action": "get_store_status"
+    })
+
+
+def set_store_status(username, status):
+    return api_call({
+        "action": "set_store_status",
+        "username": username,
+        "status": status
+    })
 
 # =====================================
 # UI CONFIG
@@ -269,23 +281,23 @@ else:
     else:
         menu_cols = st.columns(2)
 
-    if menu_cols[0].button("🛒'transaksi'", use_container_width=True):
+    if menu_cols[0].button("🛒 transaksi", use_container_width=True):
         st.session_state.menu = "Transaksi"
 
-    if menu_cols[1].button("📊'Summary'", use_container_width=True):
+    if menu_cols[1].button("📊 Summary", use_container_width=True):
         st.session_state.menu = "Summary"
 
     if role == "boss":
-        if menu_cols[2].button("📦'tambah product'", use_container_width=True):
+        if menu_cols[2].button("📦 tambah product", use_container_width=True):
             st.session_state.menu = "Add Product"
 
-        if menu_cols[3].button("📈'weekly'", use_container_width=True):
+        if menu_cols[3].button("📈 weekly", use_container_width=True):
             st.session_state.menu = "Weekly"
 
-        if menu_cols[4].button("📤'ambil stock'", use_container_width=True):
+        if menu_cols[4].button("📤 ambil stock", use_container_width=True):
             st.session_state.menu = "Ambil Stok"
 
-        if menu_cols[5].button("🏪'status toko'", use_container_width=True):
+        if menu_cols[5].button("🏪 status toko", use_container_width=True):
             st.session_state.menu = "Status Toko"
 
 
