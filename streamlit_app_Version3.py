@@ -156,17 +156,14 @@ else:
 
         st.subheader("📈 Weekly")
 
-        weekly = api_call({
-            "action": "sales_weekly",
-            "username": st.session_state.username
-        })
+        weekly = get_weekly(username)
 
         if weekly.get("status") != "success":
-            st.error("Tidak bisa mengambil data weekly")
+            st.error(weekly)
         else:
             st.metric("Transaksi", weekly.get("total_transaksi", 0))
-            st.metric("Pendapatan", weekly.get("total_sales", 0))
-            st.metric("Profit", weekly.get("total_profit", 0))
+            st.metric("Pendapatan", f"Rp {weekly.get('total_sales', 0):,}")
+            st.metric("Profit", f"Rp {weekly.get('total_profit', 0):,}")
 
             st.dataframe(weekly.get("data", []))
 
