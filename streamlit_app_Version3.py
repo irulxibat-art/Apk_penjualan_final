@@ -9,8 +9,11 @@ BASE_URL = st.secrets["BASE_URL"]
 def api_call(params):
     try:
         response = requests.get(BASE_URL, params=params, timeout=10)
+        st.write("STATUS CODE:", response.status_code)
+        st.write("RAW TEXT:", response.text)
         return response.json()
-    except:
+    except Exception as e:
+        st.write("ERROR DETAIL:", e)
         return {"status": "error", "message": "API tidak dapat diakses"}
 
 # =====================================
