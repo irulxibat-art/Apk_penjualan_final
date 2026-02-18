@@ -11,12 +11,12 @@ def api_call(params):
     try:
         response = requests.get(BASE_URL, params=params, timeout=10)
         return response.json()
-    except Exception as e:
+    except:
         return {"status": "error", "message": "API tidak dapat diakses"}
 
 
 # =====================================
-# AUTH
+# API FUNCTIONS
 # =====================================
 def login(username, password):
     return api_call({
@@ -26,9 +26,21 @@ def login(username, password):
     })
 
 
-# =====================================
-# DATA FUNCTIONS
-# =====================================
+def get_products():
+    return api_call({
+        "action": "get_products"
+    })
+
+
+def jual_produk(username, product_id, qty):
+    return api_call({
+        "action": "jual",
+        "username": username,
+        "product_id": product_id,
+        "qty": qty
+    })
+
+
 def get_summary_today(username):
     return api_call({
         "action": "summary_today",
@@ -40,15 +52,6 @@ def get_weekly(username):
     return api_call({
         "action": "history_weekly",
         "username": username
-    })
-
-
-def jual_produk(username, product_id, qty):
-    return api_call({
-        "action": "jual",
-        "username": username,
-        "product_id": product_id,
-        "qty": qty
     })
 
 
@@ -72,123 +75,145 @@ def ambil_stok_harian(username):
 
 
 # =====================================
-# UI
+# UI CONFIG
 # =====================================
 st.set_page_config(page_title="Aplikasi Penjualan", layout="centered")
+
 st.title("📊 Aplikasi Penjualan")
 
 # =====================================
-# LOGIN PAGE
+# LOGIN
 # =====================================
 if "user" not in st.session_state:
 
     st.subheader("Login")
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    u = st.text_input("Username")
+    p = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        result = login(username, password)
-
+        result = login(u, p)
         if result.get("status") == "success":
             st.session_state.user = result
-            st.success("Login berhasil")
             st.rerun()
         else:
-            st.error(result.get("message", "Login gagal"))
+            st.error("Login gagal")
 
-# =====================================
-# DASHBOARD
-# =====================================
 else:
 
     user = st.session_state.user
     username = user["username"]
     role = user["role"]
 
-    st.sidebar.write(f"Login sebagai: **{username}** ({role})")
-
-    if st.sidebar.button("Logout"):
-        del st.session_state.user
-        st.rerun()
+    if "menu" not in st.session_state:
+        st.session_state.menu = "Transaksi"
 
     # =====================================
-    # TRANSAKSI
+    # BOTTOM MENU
     # =====================================
-    st.subheader("Transaksi")
+    st.divider()
 
-    product_id = st.text_input("Product ID")
-    qty = st.number_input("Qty", min_value=1, step=1)
+    cols = st.columns(5 if role == "boss" else 2)
 
-    if st.button("Jual Produk"):
-        result = jual_produk(username, product_id, qty)
+    if cols[0].button("🛒 Transaksi"):
+        st.session_state.menu = "Transaksi"
 
-        if result.get("status") == "success":
-            st.success("Transaksi berhasil")
-        else:
-            st.error(result.get("message", "Gagal transaksi"))
+    if cols[1].button("📊 Summary"):
+        st.session_state.menu = "Summary"
+
+    if role == "boss":
+        if cols[2].button("📦 Add Product"):
+            st.session_state.menu = "Add Product"
+        if cols[3].button("📈 Weekly"):
+            st.session_state.menu = "Weekly"
+        if cols[4].button("📤 Ambil Stok"):
+            st.session_state.menu = "Ambil Stok"
 
     st.divider()
 
     # =====================================
-    # SUMMARY TODAY (SEMUA ROLE)
+    # PAGE: TRANSAKSI
     # =====================================
-    st.subheader("Total Penjualan Hari Ini")
+    if st.session_state.menu == "Transaksi":
 
-    summary = get_summary_today(username)
+        st.subheader("🛒 Transaksi Penjualan")
 
-    if summary.get("status") == "success":
-        st.metric("Total Sales", f"Rp {summary['total_sales']:,}")
-        st.metric("Total Profit", f"Rp {summary['total_profit']:,}")
-        st.metric("Total Transaksi", summary["total_transaksi"])
-    else:
-        st.error("Gagal mengambil data")
+        products_data = get_products()
+
+        if products_data.get("status") == "success":
+
+            products = products_data["data"]
+
+            product_dict = {
+                p["name"]: p["id"] for p in products
+            }
+
+            selected_name = st.selectbox(
+                "Pilih Produk",
+                list(product_dict.keys())
+            )
+
+            qty = st.number_input("Qty", min_value=1, step=1)
+
+            if st.button("Proses Transaksi"):
+                product_id = product_dict[selected_name]
+
+                result = jual_produk(username, product_id, qty)
+
+                if result.get("status") == "success":
+                    st.success("Transaksi berhasil")
+                else:
+                    st.error(result.get("message", "Gagal transaksi"))
+        else:
+            st.error("Gagal mengambil produk")
 
     # =====================================
-    # FITUR KHUSUS BOSS
+    # PAGE: SUMMARY
     # =====================================
-    if role == "boss":
+    elif st.session_state.menu == "Summary":
 
-        st.divider()
-        st.subheader("History Weekly")
+        st.subheader("📊 Total Hari Ini")
+
+        summary = get_summary_today(username)
+
+        if summary.get("status") == "success":
+            st.metric("Total Sales", f"Rp {summary['total_sales']:,}")
+            st.metric("Total Profit", f"Rp {summary['total_profit']:,}")
+            st.metric("Total Transaksi", summary["total_transaksi"])
+        else:
+            st.error("Gagal mengambil data")
+
+    # =====================================
+    # PAGE: WEEKLY (BOSS)
+    # =====================================
+    elif st.session_state.menu == "Weekly" and role == "boss":
+
+        st.subheader("📈 History Weekly")
 
         weekly = get_weekly(username)
 
         if weekly.get("status") == "success":
-            st.metric("Total Sales Mingguan", f"Rp {weekly['total_sales']:,}")
-            st.metric("Total Profit Mingguan", f"Rp {weekly['total_profit']:,}")
-            st.metric("Total Transaksi Mingguan", weekly["total_transaksi"])
+            st.metric("Sales Mingguan", f"Rp {weekly['total_sales']:,}")
+            st.metric("Profit Mingguan", f"Rp {weekly['total_profit']:,}")
+            st.metric("Total Transaksi", weekly["total_transaksi"])
 
             if weekly.get("data"):
                 st.json(weekly["data"])
         else:
-            st.error("Gagal mengambil history")
+            st.error("Gagal mengambil data")
 
-        # =====================================
-        # AMBIL STOK HARIAN
-        # =====================================
-        st.divider()
-        st.subheader("Ambil Stok Harian")
+    # =====================================
+    # PAGE: ADD PRODUCT (BOSS)
+    # =====================================
+    elif st.session_state.menu == "Add Product" and role == "boss":
 
-        if st.button("Ambil Stok dari Gudang"):
-            result = ambil_stok_harian(username)
+        st.subheader("📦 Tambah Produk")
 
-            if result.get("status") == "success":
-                st.success("Stok harian berhasil diambil")
-            else:
-                st.error(result.get("message", "Gagal ambil stok"))
-
-        # =====================================
-        # TAMBAH PRODUK
-        # =====================================
-        st.divider()
-        st.subheader("Tambah Produk Baru")
-
-        new_id = st.text_input("Product ID Baru")
+        new_id = st.text_input("Product ID")
         new_name = st.text_input("Nama Produk")
         harga_modal = st.number_input("Harga Modal", min_value=0, step=1000)
         harga_jual = st.number_input("Harga Jual", min_value=0, step=1000)
-        stok_awal = st.number_input("Stok Awal Gudang", min_value=0, step=1)
+        stok_awal = st.number_input("Stok Awal", min_value=0, step=1)
 
         if st.button("Tambah Produk"):
             result = add_product(
@@ -204,3 +229,26 @@ else:
                 st.success("Produk berhasil ditambahkan")
             else:
                 st.error(result.get("message", "Gagal menambahkan produk"))
+
+    # =====================================
+    # PAGE: AMBIL STOK (BOSS)
+    # =====================================
+    elif st.session_state.menu == "Ambil Stok" and role == "boss":
+
+        st.subheader("📤 Ambil Stok Harian")
+
+        if st.button("Ambil Stok"):
+            result = ambil_stok_harian(username)
+
+            if result.get("status") == "success":
+                st.success("Stok berhasil diambil")
+            else:
+                st.error(result.get("message", "Gagal ambil stok"))
+
+    # =====================================
+    # LOGOUT
+    # =====================================
+    st.divider()
+    if st.button("Logout"):
+        del st.session_state.user
+        st.rerun()
