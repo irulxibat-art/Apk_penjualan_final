@@ -67,11 +67,14 @@ def add_product(username, product_id, name, harga_modal, harga_jual, stok_awal):
     })
 
 
-def ambil_stok_harian(username):
+def ambil_stok_harian(username, product_id, qty):
     return api_call({
-        "action": "ambil_stok_harian",
-        "username": username
+        "action": "ambil_stok",
+        "username": username,
+        "product_id": product_id,
+        "qty": qty
     })
+
 
 def get_store_status():
     return api_call({
