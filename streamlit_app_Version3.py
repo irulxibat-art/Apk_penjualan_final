@@ -71,7 +71,7 @@ def generate_weekly_pdf(data):
 
     for row in data:
         
-        total = int(row.get("Total", 0))
+        total = int(row.get("total", 0))
         profit = int(row.get("profit", 0))
 
         total_sales += total
