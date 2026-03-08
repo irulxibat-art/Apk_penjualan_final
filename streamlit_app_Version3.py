@@ -258,27 +258,33 @@ else:
     else:
         cols = st.columns(2)
 
-    if cols[0].button("🛒Transaksi"):
-        st.session_state.menu = "Transaksi"
-        st.rerun()
+    transaksi_btn = cols[0].button("🛒Transaksi")
+    summary_btn = cols[1].button("📊P&L")
 
-    if cols[1].button("📊P&L"):
+    if transaksi_btn:
+        st.session_state.menu = "Transaksi"
+
+    if summary_btn:
         st.session_state.menu = "Summary"
-        st.rerun()
 
     if role == "boss":
-        if cols[2].button("📦Tambah produk"):
+
+        add_btn = cols[2].button("📦Tambah produk")
+        weekly_btn = cols[3].button("📈Total Mingguan")
+        ambil_btn = cols[4].button("📤Ambil stock")
+        status_btn = cols[5].button("🏪Status Toko")
+
+        if add_btn:
             st.session_state.menu = "Add Product"
-            st.rerun()
-        if cols[3].button("📈Total Mingguan"):
+
+        if weekly_btn:
             st.session_state.menu = "Weekly"
-            st.rerun()
-        if cols[4].button("📤Ambil stock"):
+
+        if ambil_btn:
             st.session_state.menu = "Ambil Stok"
-            st.rerun()
-        if cols[5].button("🏪Status Toko"):
+
+        if status_btn:
             st.session_state.menu = "Status Toko"
-            st.rerun()
 
     # ===============================
     # LOGOUT
