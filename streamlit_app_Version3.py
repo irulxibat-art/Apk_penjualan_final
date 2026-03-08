@@ -85,8 +85,6 @@ def generate_weekly_pdf(data):
             row.get("price", ""),
             row.get("total", ""),
             row.get("profit", ""),
-            total,
-            profit
         ])
 
     table_data.append([
