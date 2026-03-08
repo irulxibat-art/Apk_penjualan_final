@@ -89,7 +89,11 @@ def generate_weekly_pdf(data):
             profit
         ])
 
-     table_data.append(["", "", "", "", "TOTAL", total_sales, total_profit])
+    table_data.append([
+        "", "", "", "", "TOTAL",
+        total_sales,
+        total_profit
+    ])
     
     table = Table(table_data)
 
