@@ -67,7 +67,7 @@ def ambil_stok(username, product_id, qty):
         "qty": qty
     })
 
-@sy.cache_data(ttl=30)
+@st.cache_data(ttl=30)
 def get_store_status():
     return api_call({"action": "get_store_status"})
 
