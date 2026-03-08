@@ -68,13 +68,13 @@ def generate_weekly_pdf(data):
 
     for row in data:
         table_data.append([
-            row.get["date", ""],
-            row.get["products_id, """],
-            row.get["user", ""],
-            row.get["qty", ""],
-            row.get["price", ""],
-            row.get["total", ""],
-            row.get["profit", ""]
+            row.get("date", ""),
+            row.get("products_id, """),
+            row.get("user", ""),
+            row.get("qty", ""),
+            row.get("price", ""),
+            row.get("total", ""),
+            row.get("profit", "")
         ])
 
     table = Table(table_data)
@@ -225,7 +225,7 @@ else:
 
             st.dataframe(weekly.get("data", []))
             
-            pdf = generate_weekly_pdf(data)
+            pdf = generate_weekly_pdf(weekly["data"])
 
             st.download_button(
                 label="📄 Download PDF",
