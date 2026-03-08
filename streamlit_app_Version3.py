@@ -1,3 +1,7 @@
+from reportlab.platypus import SimpleDocTemplate, Table
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.units import cm
+import io
 import streamlit as st
 import requests
 
@@ -48,6 +52,38 @@ def get_weekly(username):
         "action": "history_weekly",
         "username": username
     })
+
+def generate_weekly_pdf(data):
+
+    buffer = io.BytesIO()
+
+    pdf = SimpleDocTemplate(
+        buffer,
+        pagesize=A4
+    )
+
+    table_data = [
+        ["Date", "User", "Product", "Qty", "Price", "Total", "Profit"]
+    ]
+
+    for row in data:
+        table_data.append([
+            row["date"],
+            row["products_id"],
+            row["user"],
+            row["qty"],
+            row["price"],
+            row["total"],
+            row["profit"]
+        ])
+
+    table = Table(table_data)
+
+    pdf.build([table])
+
+    buffer.seek(0)
+
+    return buffer
 
 def add_product(username, product_id, name, harga_modal, harga_jual, stok_awal):
     return api_call({
@@ -188,6 +224,15 @@ else:
             st.metric("Profit", f"Rp {weekly.get('total_profit', 0):,}")
 
             st.dataframe(weekly.get("data", []))
+            
+            pdf = generate_weekly_pdf(weekly["data"])
+
+            st.download_button(
+                label="📄 Download PDF",
+                data=pdf,
+                file_name="laporan_mingguan.pdf",
+                mime="application/pdf"
+            )
 
 
     elif st.session_state.menu == "Add Product" and role == "boss":
