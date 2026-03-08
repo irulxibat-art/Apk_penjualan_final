@@ -69,7 +69,7 @@ def generate_weekly_pdf(data):
     for row in data:
         table_data.append([
             row.get("date", ""),
-            row.get("products_id, ""),
+            row.get("products_id", ""),
             row.get("user", ""),
             row.get("qty", ""),
             row.get("price", ""),
