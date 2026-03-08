@@ -16,6 +16,7 @@ def api_call(params):
 # =====================================
 # API FUNCTIONS
 # =====================================
+
 def login(username, password):
     return api_call({
         "action": "login",
@@ -78,15 +79,23 @@ def set_store_status(username, status):
         "status": status
     })
 
+
 # =====================================
 # UI CONFIG
 # =====================================
+
 st.set_page_config(page_title="Aplikasi Penjualan", layout="centered")
 st.title("📊 Aplikasi Penjualan")
+
+# default menu
+if "menu" not in st.session_state:
+    st.session_state.menu = "Transaksi"
+
 
 # =====================================
 # LOGIN
 # =====================================
+
 if "user" not in st.session_state:
 
     st.subheader("Login")
@@ -95,17 +104,22 @@ if "user" not in st.session_state:
     p = st.text_input("Password", type="password")
 
     if st.button("Login"):
+
         result = login(u, p)
+
         if result.get("status") == "success":
             st.session_state.user = result
             st.session_state.menu = "Transaksi"
             st.rerun()
+
         else:
             st.error("Login gagal")
+
 
 # =====================================
 # AFTER LOGIN
 # =====================================
+
 else:
 
     user = st.session_state.user
@@ -124,23 +138,24 @@ else:
 
         if isinstance(products_data, list):
 
-            product_dict = {
-                p["name"]: p["id"] for p in products_data
-            }
+            product_dict = {p["name"]: p["id"] for p in products_data}
 
             selected = st.selectbox("Pilih Produk", list(product_dict.keys()))
             qty = st.number_input("Qty", min_value=1, step=1)
 
             if st.button("Proses"):
+
                 result = jual_produk(username, product_dict[selected], qty)
 
                 if result.get("status") == "success":
                     st.success("Transaksi berhasil")
+
                 else:
                     st.error(result)
 
         else:
             st.error(products_data)
+
 
     elif st.session_state.menu == "Summary":
 
@@ -149,11 +164,14 @@ else:
         summary = get_summary_today(username)
 
         if summary.get("status") == "success":
+
             st.metric("Total Sales", f"Rp {summary['total_sales']:,}")
             st.metric("Total Profit", f"Rp {summary['total_profit']:,}")
             st.metric("Total Transaksi", summary["total_transaksi"])
+
         else:
             st.error(summary)
+
 
     elif st.session_state.menu == "Weekly" and role == "boss":
 
@@ -163,12 +181,14 @@ else:
 
         if weekly.get("status") != "success":
             st.error(weekly)
+
         else:
             st.metric("Transaksi", weekly.get("total_transaksi", 0))
             st.metric("Pendapatan", f"Rp {weekly.get('total_sales', 0):,}")
             st.metric("Profit", f"Rp {weekly.get('total_profit', 0):,}")
 
             st.dataframe(weekly.get("data", []))
+
 
     elif st.session_state.menu == "Add Product" and role == "boss":
 
@@ -181,12 +201,15 @@ else:
         stok = st.number_input("Stok Awal", min_value=0)
 
         if st.button("Tambah"):
+
             result = add_product(username, pid, name, modal, jual, stok)
 
             if result.get("status") == "success":
                 st.success("Berhasil ditambahkan")
+
             else:
                 st.error(result)
+
 
     elif st.session_state.menu == "Ambil Stok" and role == "boss":
 
@@ -196,24 +219,24 @@ else:
 
         if isinstance(products_data, list):
 
-            product_dict = {
-                p["name"]: p["id"] for p in products_data
-            }
+            product_dict = {p["name"]: p["id"] for p in products_data}
 
             selected = st.selectbox("Pilih Produk", list(product_dict.keys()))
             qty = st.number_input("Jumlah", min_value=1, step=1)
 
             if st.button("Ambil"):
+
                 result = ambil_stok(username, product_dict[selected], qty)
 
                 if result.get("status") == "success":
                     st.success("Stok berhasil dipindahkan")
-                    st.rerun()
+
                 else:
                     st.error(result)
 
         else:
             st.error(products_data)
+
 
     elif st.session_state.menu == "Status Toko" and role == "boss":
 
@@ -227,6 +250,7 @@ else:
 
             if current == "open":
                 st.success("Toko BUKA")
+
             else:
                 st.error("Toko TUTUP")
 
@@ -238,19 +262,23 @@ else:
             )
 
             if st.button("Simpan"):
+
                 result = set_store_status(username, pilihan)
 
                 if result.get("status") == "success":
                     st.success("Berhasil diubah")
-                    st.rerun()
+
                 else:
                     st.error(result)
+
         else:
             st.error(status_data)
+
 
     # ===============================
     # BOTTOM NAVIGATION
     # ===============================
+
     st.markdown("---")
 
     if role == "boss":
@@ -258,32 +286,41 @@ else:
     else:
         cols = st.columns(2)
 
-    if cols[0].button("🛒Transaksi"):
-        st.session_state.menu = "Transaksi"
-        st.rerun()
+    transaksi_btn = cols[0].button("🛒Transaksi")
+    summary_btn = cols[1].button("📊P&L")
 
-    if cols[1].button("📊P&L"):
+    if transaksi_btn:
+        st.session_state.menu = "Transaksi"
+
+    if summary_btn:
         st.session_state.menu = "Summary"
-        st.rerun()
 
     if role == "boss":
-        if cols[2].button("📦Tambah produk"):
+
+        add_btn = cols[2].button("📦Tambah produk")
+        weekly_btn = cols[3].button("📈Total Mingguan")
+        ambil_btn = cols[4].button("📤Ambil stock")
+        status_btn = cols[5].button("🏪Status Toko")
+
+        if add_btn:
             st.session_state.menu = "Add Product"
-            st.rerun()
-        if cols[3].button("📈Total Mingguan"):
+
+        if weekly_btn:
             st.session_state.menu = "Weekly"
-            st.rerun()
-        if cols[4].button("📤Ambil stock"):
+
+        if ambil_btn:
             st.session_state.menu = "Ambil Stok"
-            st.rerun()
-        if cols[5].button("🏪Status Toko"):
+
+        if status_btn:
             st.session_state.menu = "Status Toko"
-            st.rerun()
+
 
     # ===============================
     # LOGOUT
     # ===============================
+
     st.markdown("---")
+
     if st.button("Logout"):
         del st.session_state.user
         st.rerun()
