@@ -225,7 +225,7 @@ else:
 
             st.dataframe(weekly.get("data", []))
             
-            pdf = generate_weekly_pdf(weekly["data"])
+            pdf = generate_weekly_pdf(data)
 
             st.download_button(
                 label="📄 Download PDF",
