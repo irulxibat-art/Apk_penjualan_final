@@ -266,7 +266,12 @@ else:
                 result = set_store_status(username, pilihan)
 
                 if result.get("status") == "success":
+                    
                     st.success("Berhasil diubah")
+
+                    get_store_status.clear()
+
+                    st.rerun()
 
                 else:
                     st.error(result)
