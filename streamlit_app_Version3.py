@@ -68,13 +68,13 @@ def generate_weekly_pdf(data):
 
     for row in data:
         table_data.append([
-            row["date"],
-            row["products_id"],
-            row["user"],
-            row["qty"],
-            row["price"],
-            row["total"],
-            row["profit"]
+            row["date", ""],
+            row["products_id, """],
+            row["user", ""],
+            row["qty", ""],
+            row["price", ""],
+            row["total", ""],
+            row["profit", ""]
         ])
 
     table = Table(table_data)
