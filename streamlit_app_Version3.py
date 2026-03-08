@@ -24,7 +24,6 @@ def login(username, password):
         "password": password
     })
 
-@st.cache_data(ttl=60)
 def products():
     return api_call({"action": "products"})
 
@@ -42,7 +41,6 @@ def get_summary_today(username):
         "username": username
     })
 
-@st.cache_data(ttl=120)
 def get_weekly(username):
     return api_call({
         "action": "history_weekly",
@@ -68,7 +66,6 @@ def ambil_stok(username, product_id, qty):
         "qty": qty
     })
 
-@st.cache_data(ttl=30)
 def get_store_status():
     return api_call({"action": "get_store_status"})
 
