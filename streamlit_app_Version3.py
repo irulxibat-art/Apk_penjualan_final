@@ -66,7 +66,17 @@ def generate_weekly_pdf(data):
         ["Date", "User", "Product", "Qty", "Price", "Total", "Profit"]
     ]
 
+    total_sales = 0
+    total_profit = 0
+
     for row in data:
+        
+        total = int(row.get("Total", 0))
+        profit = int(row.get("profit", 0))
+
+        total_sales += total
+        total_profit += profit
+        
         table_data.append([
             row.get("date", ""),
             row.get("user", ""),
@@ -74,9 +84,17 @@ def generate_weekly_pdf(data):
             row.get("qty", ""),
             row.get("price", ""),
             row.get("total", ""),
-            row.get("profit", "")
+            row.get("profit", ""),
+            total,
+            profit
         ])
 
+     table_data.append([
+        "", "", "", "", "TOTAL",
+        total_sales,
+        total_profit
+    ])
+    
     table = Table(table_data)
 
     pdf.build([table])
