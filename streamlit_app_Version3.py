@@ -376,8 +376,7 @@ else:
                     "ID": p["id"],
                     "Nama": p["name"],
                     "Modal": p["cost"],
-                    "Harga Jual": p["price"],
-                    "Stock Harian": p["harian_stock"]
+                    "Harga Jual": p["price"]
                 })
 
             st.dataframe(table, use_container_width=True)
