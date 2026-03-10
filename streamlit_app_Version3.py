@@ -375,8 +375,8 @@ else:
                 table.append({
                     "ID": p["id"],
                     "Nama": p["name"],
-                    "Modal": p["harga_modal"],
-                    "Harga Jual": p["harga_jual"],
+                    "Modal": p["cost"],
+                    "Harga Jual": p["price"],
                     "Stok": p["stok"]
                 })
 
