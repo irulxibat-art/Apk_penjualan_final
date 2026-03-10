@@ -377,7 +377,6 @@ else:
                     "Nama": p["name"],
                     "Modal": p["cost"],
                     "Harga Jual": p["price"],
-                    "Stok": p["gudang_stok"],
                     "Stock Harian": p["harian_stock"]
                 })
 
