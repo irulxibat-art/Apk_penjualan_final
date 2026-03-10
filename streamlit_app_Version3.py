@@ -377,7 +377,8 @@ else:
                     "Nama": p["name"],
                     "Modal": p["cost"],
                     "Harga Jual": p["price"],
-                    "Stok": p["stok"]
+                    "Stok": p["gudang_stok"],
+                    "Stock Harian": p["harian_stock"]
                 })
 
             st.dataframe(table, use_container_width=True)
