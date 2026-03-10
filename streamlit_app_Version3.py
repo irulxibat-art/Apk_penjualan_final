@@ -229,17 +229,21 @@ else:
 
         st.subheader("📈 Weekly")
 
-        weekly = get_weekly(username)
+        weekly = get_weekly(st.session_state.username)
 
-        if weekly.get("status") != "success":
-            st.error(weekly)
-
+        if not weekly or weekly.get("status") != "success":
+            st.warning("Data weekly belum tersedia.")
         else:
-            st.metric("Transaksi", weekly.get("total_transaksi", 0))
-            st.metric("Pendapatan", f"Rp {weekly.get('total_sales', 0):,}")
-            st.metric("Profit", f"Rp {weekly.get('total_profit', 0):,}")
 
-            st.dataframe(weekly.get("data", []))
+            if len(weekly.get("data", [])) == 0:
+                st.info("Belum ada transaksi minggu ini.")
+            else:
+
+                st.metric("Transaksi", weekly.get("total_transaksi", 0))
+                st.metric("Total Sales", weekly.get("total_sales", 0))
+                st.metric("Total Profit", weekly.get("total_profit", 0))
+
+                st.dataframe(weekly["data"])
             
             pdf = generate_weekly_pdf(weekly["data"])
 
