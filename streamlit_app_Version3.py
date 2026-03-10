@@ -528,6 +528,9 @@ else:
 
         if status_btn:
             st.session_state.menu = "Status Toko"
+
+        if produk_btn:
+            st.sesseion_state.menu = "Daftar Produk"
         
         st.markdown("---")
 
