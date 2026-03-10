@@ -248,7 +248,7 @@ else:
 
         st.subheader("📈 Weekly")
 
-        weekly = get_weekly(st.session_state.username)
+        weekly = get_weekly(username)
 
         if not weekly or weekly.get("status") != "success":
             st.warning("Data weekly belum tersedia.")
