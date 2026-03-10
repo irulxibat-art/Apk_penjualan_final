@@ -131,6 +131,13 @@ def edit_produk(username, product_id, name, harga_modal, harga_jual):
         "harga_jual": harga_jual
     })
 
+def delete_product(username, product_id):
+    return api_call({
+        "action": "delete_product",
+        "username": username,
+        "product_id": product_id
+    })
+
 def ambil_stok(username, product_id, qty):
     return api_call({
         "action": "ambil_stok",
@@ -351,7 +358,67 @@ else:
             st.error(products_data)
 
     
+    elif st.session_state.menu == "Daftar Produk" and role == "boss":
+        
+        st.subheader("📦 Daftar Produk")
 
+        products_data = products()
+
+        if isinstance(products_data, list):
+            
+
+            table = []
+
+            for p in products_data:
+                
+
+                table.append({
+                    "ID": p["id"],
+                    "Nama": p["name"],
+                    "Modal": p["harga_modal"],
+                    "Harga Jual": p["harga_jual"],
+                    "Stok": p["stok"]
+                })
+
+            st.dataframe(table, use_container_width=True)
+
+        else:
+            st.error(products_data)
+
+    elif st.session_state.menu == "Hapus Produk" and role == "boss":
+
+        st.subheader("🗑️ Hapus Produk")
+
+        products_data = products()
+
+        if isinstance(products_data, list):
+            
+
+            product_dict = {p["name"]: p["id"] for p in products_data}
+
+            selected = st.selectbox(
+                "Pilih Produk",
+                list(product_dict.keys())
+            )
+
+            st.warning("Produk yang dihapus tidak bisa dikembalikan.")
+
+            if st.button("Hapus Produk"):
+
+                result = delete_product(
+                    username,
+                    product_dict[selected]
+                )
+
+                if result.get("status") == "success":
+                    st.success("Produk berhasil dihapus")
+                else:
+                    st.error(result)
+
+        else:
+            st.error(products_data)
+        
+    
     elif st.session_state.menu == "Ambil Stok" and role == "boss":
 
         st.subheader("📤 Ambil Stok")
@@ -444,7 +511,6 @@ else:
     if role == "boss":
 
         add_btn = cols[2].button("📦Tambah produk")
-        edit_btn = cols[6].button("✏️Edit Produk")
 
         if edit_btn:
             st.session_state.menu = "Edit Produk"
@@ -452,7 +518,7 @@ else:
         weekly_btn = cols[3].button("📈Total Mingguan")
         ambil_btn = cols[4].button("📤Ambil stock")
         status_btn = cols[5].button("🏪Status Toko")
-
+        produk_btn = cols[6].button("📋Daftar Produk")
         if add_btn:
             st.session_state.menu = "Add Product"
 
@@ -464,6 +530,18 @@ else:
 
         if status_btn:
             st.session_state.menu = "Status Toko"
+        
+        st.markdown("---")
+
+        if role == "boss":
+
+            col1, col2 = st.columns(2)
+
+        if col1.button("✏️ Edit Produk"):
+            st.session_state.menu = "Edit Produk"
+
+        if col2.button("🗑️ Hapus Produk"):
+            st.session_state.menu = "Hapus Produk"
 
 
     # ===============================
