@@ -63,7 +63,7 @@ def generate_weekly_pdf(data):
     )
 
     table_data = [
-        ["Minggu","Tanggal", "User", "Product", "Qty", "Harga", "Total", "Profit"]
+        ["Date", "User", "Product", "Qty", "Price", "Total", "Profit"]
     ]
 
     total_sales = 0
@@ -78,7 +78,6 @@ def generate_weekly_pdf(data):
         total_profit += profit
         
         table_data.append([
-            row.get("week", ""),
             row.get("date", ""),
             row.get("user", ""),
             row.get("products_id", ""),
