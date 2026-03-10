@@ -112,6 +112,25 @@ def add_product(username, product_id, name, harga_modal, harga_jual, stok_awal):
         "stok_awal": stok_awal
     })
 
+def edit_harga(username, product_id, harga_jual):
+    return api_call({
+        "action": "edit_harga",
+        "username": username,
+        "product_id": product_id,
+        "harga_jual": harga_jual
+    })
+
+
+def edit_produk(username, product_id, name, harga_modal, harga_jual):
+    return api_call({
+        "action": "edit_produk",
+        "username": username,
+        "product_id": product_id,
+        "name": name,
+        "harga_modal": harga_modal,
+        "harga_jual": harga_jual
+    })
+
 def ambil_stok(username, product_id, qty):
     return api_call({
         "action": "ambil_stok",
@@ -274,7 +293,64 @@ else:
 
             else:
                 st.error(result)
+                
 
+    elif st.session_state.menu == "Edit Produk" and role == "boss":
+        
+        st.subheader("✏️ Edit Produk")
+
+        products_data = products()
+
+        if isinstance(products_data, list):
+            
+            product_dict = {p["name"]: p["id"] for p in products_data}
+
+            selected = st.selectbox("Pilih Produk", list(product_dict.keys()))
+
+            mode = st.radio(
+                "Mode Edit",
+                ["Edit Harga", "Edit Semua"],
+                horizontal=True
+            )
+
+            if mode == "Edit Harga":
+
+                harga = st.number_input("Harga Baru", min_value=0)
+
+                if st.button("Update Harga"):
+
+                    result = edit_harga(username, product_dict[selected], harga)
+
+                    if result.get("status") == "success":
+                        st.success("Harga berhasil diupdate")
+                    else:
+                        st.error(result)
+
+            else:
+
+                name = st.text_input("Nama Produk")
+                modal = st.number_input("Harga Modal", min_value=0)
+                jual = st.number_input("Harga Jual", min_value=0)
+
+                if st.button("Update Produk"):
+
+                    result = edit_produk(
+                        username,
+                        product_dict[selected],
+                        name,
+                        modal,
+                        jual
+                    )
+
+                    if result.get("status") == "success":
+                        st.success("Produk berhasil diupdate")
+                    else:
+                        st.error(result)
+
+        else:
+            st.error(products_data)
+
+    
 
     elif st.session_state.menu == "Ambil Stok" and role == "boss":
 
@@ -352,7 +428,7 @@ else:
     st.markdown("---")
 
     if role == "boss":
-        cols = st.columns(6)
+        cols = st.columns(7)
     else:
         cols = st.columns(2)
 
@@ -368,6 +444,11 @@ else:
     if role == "boss":
 
         add_btn = cols[2].button("📦Tambah produk")
+        edit_btn = cols[6].button("✏️Edit Produk")
+
+        if edit_btn:
+            st.session_state.menu = "Edit Produk"
+
         weekly_btn = cols[3].button("📈Total Mingguan")
         ambil_btn = cols[4].button("📤Ambil stock")
         status_btn = cols[5].button("🏪Status Toko")
