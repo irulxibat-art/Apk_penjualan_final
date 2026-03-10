@@ -512,9 +512,7 @@ else:
 
         add_btn = cols[2].button("📦Tambah produk")
 
-        if edit_btn:
-            st.session_state.menu = "Edit Produk"
-
+        
         weekly_btn = cols[3].button("📈Total Mingguan")
         ambil_btn = cols[4].button("📤Ambil stock")
         status_btn = cols[5].button("🏪Status Toko")
